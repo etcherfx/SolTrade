@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 
 class Config:
-    def __init__(self, path):
+    def __init__(self):
         load_dotenv()
         self.api_key = None
         self.private_key = None
@@ -27,7 +27,7 @@ class Config:
         self.telegram = None
         self.tg_bot_token = None
         self.tg_bot_uid = None
-        self.path = os.path.join(os.path.dirname(path), "config.json")
+        self.path = os.path.join(os.path.dirname(__file__), "..", "config.json")
         self.load_config()
 
     def load_config(self):
@@ -41,7 +41,7 @@ class Config:
             "secondary_mint": "So11111111111111111111111111111111111111112",
             "secondary_mint_symbol": "SOL",
             "price_update_seconds": 30,
-            "trading_interval_minutes": 0.5,
+            "trading_interval_minutes": 1,
             "slippage": 50,
             "telegram": None,
             "tg_bot_token": None,
@@ -78,7 +78,7 @@ class Config:
 
     @property
     def client(self) -> Client:
-        rpc_url = self.custom_rpc_https
+        rpc_url = self.rpc_https
         return Client(rpc_url)
 
     @property

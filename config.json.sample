@@ -5,7 +5,7 @@
   "secondary_mint": "So11111111111111111111111111111111111111112",
   "secondary_mint_symbol": "SOL",
   "price_update_seconds": 30,
-  "trading_interval_minutes": 0.5,
+  "trading_interval_minutes": 1,
   "slippage": 50,
   "telegram": false,
   "tg_bot_token": "",

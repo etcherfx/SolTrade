@@ -1,10 +1,11 @@
 import requests
 import asyncio
 import pandas as pd
+import os
 
 from apscheduler.schedulers.background import BlockingScheduler
 
-from soltrade.transactions import perform_swap, market
+from soltrade.transactions import perform_swap, market, MarketPosition
 from soltrade.strategy import strategy, calc_stoploss, calc_trailing_stoploss
 from soltrade.wallet import find_balance
 from soltrade.log import log_general, log_transaction
@@ -49,7 +50,9 @@ def perform_analysis():
     df = strategy(df)
     print(df.tail(2))
 
-    if not MarketPosition().position:
+    if not MarketPosition(
+        os.path.join(os.path.dirname(__file__), "..", "position.json")
+    ).position:
         input_amount = find_balance(config().primary_mint)
         if df["entry"].iloc[-1] == 1:
             buy_msg = f"Soltrade has detected a buy signal using {input_amount} ${config().primary_mint_symbol}."
