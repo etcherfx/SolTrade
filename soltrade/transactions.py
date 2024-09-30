@@ -2,6 +2,7 @@ import httpx
 import json
 import asyncio
 import os
+import requests
 
 import base64
 from solana.rpc.types import TxOpts
@@ -12,6 +13,7 @@ from solders import message
 
 from soltrade.log import log_general, log_transaction
 from soltrade.config import config
+
 
 class MarketPosition:
     def __init__(self, path):
@@ -24,31 +26,29 @@ class MarketPosition:
 
     def load_position(self):
         if os.path.exists(self.path):
-            with open(self.path, 'r') as file:
+            with open(self.path, "r") as file:
                 position_data = json.load(file)
                 self.is_open = position_data["is_open"]
                 self.sl = position_data["sl"]
                 self.tp = position_data["tp"]
         else:
             self.update_position(self.is_open, self.sl, self.tp)
-            
+
     def update_position(self, position, stoploss, takeprofit):
         self.sl = stoploss
         self.tp = takeprofit
         self.is_open = position
-        position_obj = {
-            "is_open": position,
-            "sl": stoploss,
-            "tp": takeprofit
-        }
-        with open(self.path, 'w') as file:
+        position_obj = {"is_open": position, "sl": stoploss, "tp": takeprofit}
+        with open(self.path, "w") as file:
             json.dump(position_obj, file)
 
     @property
     def position(self):
         return self.is_open
-    
+
+
 _market_instance = None
+
 
 def market(path=None):
     global _market_instance
@@ -59,7 +59,9 @@ def market(path=None):
 
 # Returns the route to be manipulated in createTransaction()
 async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
-    log_transaction.info(f"Soltrade is creating exchange for {input_amount} {input_token_mint}")
+    log_transaction.info(
+        f"Soltrade is creating exchange for {input_amount} {input_token_mint}"
+    )
 
     # Determines what mint address should be used in the api link
     if input_token_mint == config().primary_mint:
@@ -68,7 +70,7 @@ async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
     else:
         output_token_mint = config().primary_mint
         token_decimals = config().decimals
-    
+
     # Finds the response and converts it into a readable array
     api_link = f"https://quote-api.jup.ag/v6/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&slippageBps={config().slippage}"
     log_transaction.info(f"Soltrade API Link: {api_link}")
@@ -79,26 +81,31 @@ async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
 
 # Returns the swap_transaction to be manipulated in sendTransaction()
 async def create_transaction(quote: dict) -> dict:
-    log_transaction.info(f"""Soltrade is creating transaction for the following quote: 
-{quote}""")
+    log_transaction.info(
+        f"""Soltrade is creating transaction for the following quote: 
+{quote}"""
+    )
 
     # Parameters used for the Jupiter POST request
     parameters = {
         "quoteResponse": quote,
         "userPublicKey": str(config().public_address),
         "wrapUnwrapSOL": True,
-        "computeUnitPriceMicroLamports": 20 * 14000  # fee of roughly $.04  :shrug:
+        "computeUnitPriceMicroLamports": 20 * 14000,  # fee of roughly $.04  :shrug:
     }
 
     # Returns the JSON parsed response of Jupiter
     async with httpx.AsyncClient() as client:
-        response = await client.post("https://quote-api.jup.ag/v6/swap", json=parameters)
+        response = await client.post(
+            "https://quote-api.jup.ag/v6/swap", json=parameters
+        )
         return response.json()
+
 
 def get_transaction_details(tx_id):
     # RPC endpoint URL
-    rpc_url = 'https://api.mainnet-beta.solana.com'
-    
+    rpc_url = "https://api.mainnet-beta.solana.com"
+
     # Construct the JSON-RPC request
     payload = {
         "jsonrpc": "2.0",
@@ -106,23 +113,26 @@ def get_transaction_details(tx_id):
         "method": "getTransaction",
         "params": [tx_id],
     }
-    
+
     # Send the request
     response = requests.post(rpc_url, json=payload)
-    
+
     if response.status_code == 200:
         result = response.json()
-        if 'result' in result:
-            return result['result']
+        if "result" in result:
+            return result["result"]
         else:
             print("Error: Transaction not found")
     else:
         print("Error: Failed to retrieve transaction details")
 
+
 # Deserializes and sends the transaction from the swap information given
 def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
     raw_txn = VersionedTransaction.from_bytes(base64.b64decode(swap_transaction))
-    signature = config().keypair.sign_message(message.to_bytes_versioned(raw_txn.message))
+    signature = config().keypair.sign_message(
+        message.to_bytes_versioned(raw_txn.message)
+    )
     signed_txn = VersionedTransaction.populate(raw_txn.message, [signature])
 
     result = config().client.send_raw_transaction(bytes(signed_txn), opts)
@@ -133,15 +143,26 @@ def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
     log_transaction.info(f"Soltrade Verified on Chain! {verified_tx}")
     return txid
 
+
 def find_transaction_error(txid: Signature) -> dict:
-    json_response = config().client.get_transaction(txid, max_supported_transaction_version=0).to_json()
+    json_response = (
+        config()
+        .client.get_transaction(txid, max_supported_transaction_version=0)
+        .to_json()
+    )
     parsed_response = json.loads(json_response)["result"]["meta"]["err"]
     return parsed_response
 
+
 def find_last_valid_block_height() -> dict:
-    json_response = config().client.get_latest_blockhash(commitment="confirmed").to_json()
-    parsed_response = json.loads(json_response)["result"]["value"]["lastValidBlockHeight"]
+    json_response = (
+        config().client.get_latest_blockhash(commitment="confirmed").to_json()
+    )
+    parsed_response = json.loads(json_response)["result"]["value"][
+        "lastValidBlockHeight"
+    ]
     return parsed_response
+
 
 # Uses the previous functions and parameters to exchange Solana token currencies
 async def perform_swap(sent_amount: float, sent_token_mint: str):
@@ -156,11 +177,17 @@ async def perform_swap(sent_amount: float, sent_token_mint: str):
             try:
                 quote = await create_exchange(sent_amount, sent_token_mint)
                 trans = await create_transaction(quote)
-                opts = TxOpts(skip_preflight=False, preflight_commitment="confirmed", last_valid_block_height=find_last_valid_block_height())
+                opts = TxOpts(
+                    skip_preflight=False,
+                    preflight_commitment="confirmed",
+                    last_valid_block_height=find_last_valid_block_height(),
+                )
                 txid = send_transaction(trans["swapTransaction"], opts)
             except Exception:
                 if RPCException:
-                    log_general.warning(f"Soltrade failed to complete transaction {i}. Retrying.")
+                    log_general.warning(
+                        f"Soltrade failed to complete transaction {i}. Retrying."
+                    )
                     continue
                 else:
                     raise
@@ -172,21 +199,29 @@ async def perform_swap(sent_amount: float, sent_token_mint: str):
                         is_tx_successful = True
                         break
                 except TypeError:
-                    log_general.warning("Soltrade failed to verify the existence of the transaction. Retrying.")
+                    log_general.warning(
+                        "Soltrade failed to verify the existence of the transaction. Retrying."
+                    )
                     continue
         else:
             break
 
     if tx_error or not is_tx_successful:
-        log_general.error("Soltrade failed to complete the transaction due to slippage issues with Jupiter.")
+        log_general.error(
+            "Soltrade failed to complete the transaction due to slippage issues with Jupiter."
+        )
         return False
 
     if sent_token_mint == config().primary_mint:
         decimals = config().decimals
-        bought_amount = int(quote['outAmount']) / decimals
-        log_transaction.info(f"Sold {sent_amount} {config().primary_mint_symbol} for {bought_amount:.6f} {config().secondary_mint_symbol}")
+        bought_amount = int(quote["outAmount"]) / decimals
+        log_transaction.info(
+            f"Sold {sent_amount} {config().primary_mint_symbol} for {bought_amount:.6f} {config().secondary_mint_symbol}"
+        )
     else:
-        usdc_decimals = 10**6 # TODO: make this a constant variable in utils.py
-        bought_amount = int(quote['outAmount']) / usdc_decimals
-        log_transaction.info(f"Sold {sent_amount} {config().secondary_mint_symbol} for {bought_amount:.2f} {config().primary_mint_symbol}")
+        usdc_decimals = 10**6  # TODO: make this a constant variable in utils.py
+        bought_amount = int(quote["outAmount"]) / usdc_decimals
+        log_transaction.info(
+            f"Sold {sent_amount} {config().secondary_mint_symbol} for {bought_amount:.2f} {config().primary_mint_symbol}"
+        )
     return True
