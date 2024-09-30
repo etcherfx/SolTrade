@@ -13,11 +13,13 @@ base58 = "2.1.1"
 httpx = "0.27.2"
 pandas = "2.2.3"
 requests = "2.32.3"
+setuptools = "75.1.0"
 solana = "0.34.3"
+TA-Lib = "0.4.32"
 matplotlib = "3.9.2"
 solders = "0.21.0"
 python-dotenv = "1.0.1"
-pandas-ta = "0.3.14b"
+pandas-ta = { git = "https://github.com/twopirllc/pandas-ta.git" }
 
 [build-system]
 requires = ["poetry-core"]
