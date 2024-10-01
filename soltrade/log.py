@@ -19,7 +19,7 @@ class CustomFormatter(logging.Formatter):
         logging.INFO: green + format + reset,
         logging.WARNING: yellow + format + reset,
         logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
+        logging.CRITICAL: bold_red + format + reset,
     }
 
     def format(self, record) -> str:
@@ -34,10 +34,14 @@ class AutoFlushStreamHandler(StreamHandler):
         self.flush()
 
 
-def setup_logger(name, log_file, level=logging.INFO, add_to_general=False) -> logging.Logger:
+def setup_logger(
+    name, log_file, level=logging.INFO, add_to_general=False
+) -> logging.Logger:
     """Function to set up a logger with rotating file handler and console output."""
     # Formatter without color codes for file output
-    file_formatter = logging.Formatter("%(asctime)s     %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    file_formatter = logging.Formatter(
+        "%(asctime)s     %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
     # File handler setup
     file_handler = RotatingFileHandler(log_file, maxBytes=1000000, backupCount=5)
@@ -54,7 +58,9 @@ def setup_logger(name, log_file, level=logging.INFO, add_to_general=False) -> lo
     logger.addHandler(console_handler)
 
     if add_to_general:
-        general_handler = RotatingFileHandler('general_log.log', maxBytes=1000000, backupCount=5)
+        general_handler = RotatingFileHandler(
+            "general_log.log", maxBytes=1000000, backupCount=5
+        )
         general_handler.setFormatter(file_formatter)
         logger.addHandler(general_handler)
 
@@ -62,5 +68,7 @@ def setup_logger(name, log_file, level=logging.INFO, add_to_general=False) -> lo
 
 
 # Creating two loggers, with transaction logger also writing to general log
-log_general = setup_logger('general_logger', 'general_log.log', level=logging.DEBUG)
-log_transaction = setup_logger('transaction_logger', 'transaction_log.log', add_to_general=True, level=logging.DEBUG)
+log_general = setup_logger("general_logger", "general.log", level=logging.DEBUG)
+log_transaction = setup_logger(
+    "transaction_logger", "transaction.log", add_to_general=True, level=logging.DEBUG
+)
