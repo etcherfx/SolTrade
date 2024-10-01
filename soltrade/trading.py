@@ -1,21 +1,20 @@
-import requests
 import asyncio
-import pandas as pd
-import os
 import json
 
+import pandas as pd
+import requests
 from apscheduler.schedulers.background import BlockingScheduler
 
-from soltrade.transactions import perform_swap, market
+from soltrade.config import config
+from soltrade.log import log_general, log_transaction
 from soltrade.strategy import (
     strategy,
     calc_stoploss,
     calc_trailing_stoploss,
     calc_entry_price,
 )
+from soltrade.transactions import perform_swap, market
 from soltrade.wallet import find_balance
-from soltrade.log import log_general, log_transaction
-from soltrade.config import config
 
 market("position.json")
 

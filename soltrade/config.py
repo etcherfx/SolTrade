@@ -1,12 +1,12 @@
-import os
 import json
-import base58
+import os
 
-from solders.pubkey import Pubkey
-from solders.keypair import Keypair
-from solana.rpc.api import Client
-from soltrade.log import log_general
 from dotenv import load_dotenv
+from solana.rpc.api import Client
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
+
+from soltrade.log import log_general
 
 
 class Config:
@@ -23,9 +23,14 @@ class Config:
         self.price_update_seconds = None
         self.trading_interval_minutes = None
         self.slippage = None  # BPS
+        self.stoploss = None  # %
+        self.trailing_stoploss_target = None  # %
+        self.trailing_stoploss = None  # %
         self.telegram = None
         self.tg_bot_token = None
         self.tg_bot_uid = None
+        self.verbose = None
+        self.strategy = None
         self.path = os.path.join(os.path.dirname(__file__), "..", "config.json")
         self.load_config()
 

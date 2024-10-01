@@ -1,18 +1,18 @@
-import httpx
-import json
 import asyncio
-import os
-import requests
-
 import base64
-from solana.rpc.types import TxOpts
-from solana.rpc.core import RPCException
-from solders.transaction import VersionedTransaction
-from solders.signature import Signature
-from solders import message
+import json
+import os
 
-from soltrade.log import log_general, log_transaction
+import httpx
+import requests
+from solana.rpc.core import RPCException
+from solana.rpc.types import TxOpts
+from solders import message
+from solders.signature import Signature
+from solders.transaction import VersionedTransaction
+
 from soltrade.config import config
+from soltrade.log import log_general, log_transaction
 
 
 class MarketPosition:
@@ -66,7 +66,7 @@ async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
     # Determines what mint address should be used in the api link
     if input_token_mint == config().primary_mint:
         output_token_mint = config().secondary_mint
-        token_decimals = 10**6  # USDC decimals
+        token_decimals = 10 ** 6  # USDC decimals
     else:
         output_token_mint = config().primary_mint
         token_decimals = config().decimals
@@ -219,7 +219,7 @@ async def perform_swap(sent_amount: float, sent_token_mint: str):
             f"Sold {sent_amount} {config().primary_mint_symbol} for {bought_amount:.6f} {config().secondary_mint_symbol}"
         )
     else:
-        usdc_decimals = 10**6  # TODO: make this a constant variable in utils.py
+        usdc_decimals = 10 ** 6  # TODO: make this a constant variable in utils.py
         bought_amount = int(quote["outAmount"]) / usdc_decimals
         log_transaction.info(
             f"Sold {sent_amount} {config().secondary_mint_symbol} for {bought_amount:.2f} {config().primary_mint_symbol}"

@@ -1,7 +1,7 @@
 import logging
-from logging.handlers import RotatingFileHandler
-from logging import StreamHandler
 import sys
+from logging import StreamHandler
+from logging.handlers import RotatingFileHandler
 
 
 # Custom formatter to support colors in console

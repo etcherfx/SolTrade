@@ -1,11 +1,10 @@
-
 import json
 
-from solders.pubkey import Pubkey
 from solana.rpc.types import TokenAccountOpts
+from solders.pubkey import Pubkey
 
-from soltrade.utils import handle_rate_limiting
 from soltrade.config import config
+from soltrade.utils import handle_rate_limiting
 
 
 # Returns the current balance of token in the wallet
