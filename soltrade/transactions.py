@@ -139,7 +139,7 @@ def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
     print(result)
     txid = result.value
     log_transaction.info(f"Soltrade TxID: {txid}")
-    verified_tx = get_transaction_details(tx_id)
+    verified_tx = get_transaction_details(txid)
     log_transaction.info(f"Soltrade Verified on Chain! {verified_tx}")
     return txid
 

@@ -6,8 +6,13 @@ import json
 
 from apscheduler.schedulers.background import BlockingScheduler
 
-from soltrade.transactions import perform_swap, market, MarketPosition
-from soltrade.strategy import strategy, calc_stoploss, calc_trailing_stoploss
+from soltrade.transactions import perform_swap, market
+from soltrade.strategy import (
+    strategy,
+    calc_stoploss,
+    calc_trailing_stoploss,
+    calc_entry_price,
+)
 from soltrade.wallet import find_balance
 from soltrade.log import log_general, log_transaction
 from soltrade.config import config
@@ -43,17 +48,17 @@ def perform_analysis():
     # Converts JSON response for DataFrame manipulation
     candle_json = fetch_candlestick()
     candle_dict = candle_json["Data"]["Data"]
+    json_file_path = "data.json"
 
     # Creates DataFrame for manipulation
     columns = ["close", "high", "low", "open", "time"]
     df = pd.DataFrame(candle_dict, columns=columns)
     df["time"] = pd.to_datetime(df["time"], unit="s")
+    cl = df["close"]
     df = strategy(df)
     print(df.tail(2))
 
-    if not MarketPosition(
-        os.path.join(os.path.dirname(__file__), "..", "position.json")
-    ).position:
+    if not market().position:
         input_amount = find_balance(config().primary_mint)
         if df["entry"].iloc[-1] == 1:
             buy_msg = f"Soltrade has detected a buy signal using {input_amount} ${config().primary_mint_symbol}."
@@ -63,17 +68,19 @@ def perform_analysis():
                 fund_msg = f"Soltrade has detected a buy signal, but does not have enough ${config().primary_mint_symbol} to trade."
                 log_transaction.info(fund_msg)
                 return
-            asyncio.run(perform_swap(input_amount, config().primary_mint))
-            df["entry_price"] = df["close"].iloc[-1]
-            entry_price = df["entry_price"]
-            df = calc_stoploss(df)
-            df = calc_trailing_stoploss(df)
-            stoploss = df["stoploss"].iloc[-1]
-            trailing_stoploss = df["trailing_stoploss"].iloc[-1]
-            print(df.tail(2))
-            # Save DataFrame to JSON file
-            json_file_path = "data.json"
-            save_dataframe_to_json(df, json_file_path)
+            is_swapped = asyncio.run(perform_swap(input_amount, config().primary_mint))
+            if is_swapped:
+                df = calc_entry_price(df)
+                df = calc_stoploss(df)
+                df = calc_trailing_stoploss(df)
+                stoploss = df["stoploss"].iloc[-1]
+                trailing_stoploss = df["trailing_stoploss"].iloc[-1]
+                print(df.tail(2))
+                save_dataframe_to_json(df, json_file_path)
+                stoploss = market().sl = cl.iat[-1] * 0.925
+                takeprofit = market().tp = cl.iat[-1] * 1.25
+                market().update_position(True, stoploss, takeprofit)
+            return
 
     else:
         # Read DataFrame from JSON file
