@@ -18,7 +18,7 @@ solana = "0.34.3"
 matplotlib = "3.9.2"
 solders = "0.21.0"
 python-dotenv = "1.0.1"
-pandas-ta = { git = "https://github.com/twopirllc/pandas-ta.git" }
+pandas-ta = { git = "https://github.com/twopirllc/pandas-ta.git", branch = "development" }
 
 [build-system]
 requires = ["poetry-core"]
