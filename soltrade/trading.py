@@ -47,7 +47,6 @@ def perform_analysis():
     # Converts JSON response for DataFrame manipulation
     candle_json = fetch_candlestick()
     candle_dict = candle_json["Data"]["Data"]
-    json_file_path = "data.json"
 
     # Creates DataFrame for manipulation
     columns = ["close", "high", "low", "open", "time"]
@@ -55,7 +54,17 @@ def perform_analysis():
     df["time"] = pd.to_datetime(df["time"], unit="s")
     cl = df["close"]
     df = strategy(df)
+    json_file_path = "data.json"
     print(df.tail(2))
+
+    for col in [
+        "entry_price",
+        "stoploss",
+        "trailing_stoploss",
+        "trailing_stoploss_target",
+    ]:
+        if col not in df.columns:
+            df[col] = None
 
     if not market().position:
         input_amount = find_balance(config().primary_mint)
@@ -72,13 +81,11 @@ def perform_analysis():
                 df = calc_entry_price(df)
                 df = calc_stoploss(df)
                 df = calc_trailing_stoploss(df)
-                stoploss = df["stoploss"].iloc[-1]
                 trailing_stoploss = df["trailing_stoploss"].iloc[-1]
                 print(df.tail(2))
-                save_dataframe_to_json(df, json_file_path)
-                stoploss = market().sl = cl.iat[-1] * 0.925
                 takeprofit = market().tp = cl.iat[-1] * 1.25
-                market().update_position(True, stoploss, takeprofit)
+                market().update_position(True, df["stoploss"].iloc[-1], takeprofit)
+            save_dataframe_to_json(df, json_file_path)
             return
 
     else:
@@ -118,6 +125,7 @@ def perform_analysis():
             asyncio.run(perform_swap(input_amount, config().secondary_mint))
             stoploss = takeprofit = 0
             df["entry_price"] = None
+        save_dataframe_to_json(df, json_file_path)
 
 
 # This starts the trading function on a timer

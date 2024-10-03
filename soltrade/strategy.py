@@ -12,17 +12,17 @@ def strategy(df: pd.DataFrame):
 
         ### Populate default indicators
         # Calculates EMA
-        df["ema_s"] = ta.ema(df["close"], timeperiod=8)
-        df["ema_m"] = ta.ema(df["close"], timeperiod=21)
+        df["ema_s"] = ta.ema(df["close"], length=8)
+        df["ema_m"] = ta.ema(df["close"], length=21)
 
         # Bollinger Bands
-        sma = ta.sma(df["close"], timeperiod=20)
+        sma = ta.sma(df["close"], length=20)
         std = df["close"].rolling(20).std()
         df["upper_bband"] = sma + std * 2
         df["lower_bband"] = sma - std * 2
 
         # RSI
-        df["rsi"] = ta.rsi(df, timeperiod=14)
+        df["rsi"] = ta.rsi(df["close"], length=14)
 
         ### Entry
         entry = ((df["ema_s"] > df["ema_m"]) | (df["close"] < df["lower_bband"])) & (

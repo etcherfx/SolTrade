@@ -4,7 +4,6 @@ import json
 import os
 
 import httpx
-import requests
 from solana.rpc.core import RPCException
 from solana.rpc.types import TxOpts
 from solders import message
@@ -66,7 +65,7 @@ async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
     # Determines what mint address should be used in the api link
     if input_token_mint == config().primary_mint:
         output_token_mint = config().secondary_mint
-        token_decimals = 10 ** 6  # USDC decimals
+        token_decimals = 10**6  # USDC decimals
     else:
         output_token_mint = config().primary_mint
         token_decimals = config().decimals
@@ -102,31 +101,6 @@ async def create_transaction(quote: dict) -> dict:
         return response.json()
 
 
-def get_transaction_details(tx_id):
-    # RPC endpoint URL
-    rpc_url = "https://api.mainnet-beta.solana.com"
-
-    # Construct the JSON-RPC request
-    payload = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "getTransaction",
-        "params": [tx_id],
-    }
-
-    # Send the request
-    response = requests.post(rpc_url, json=payload)
-
-    if response.status_code == 200:
-        result = response.json()
-        if "result" in result:
-            return result["result"]
-        else:
-            print("Error: Transaction not found")
-    else:
-        print("Error: Failed to retrieve transaction details")
-
-
 # Deserializes and sends the transaction from the swap information given
 def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
     raw_txn = VersionedTransaction.from_bytes(base64.b64decode(swap_transaction))
@@ -136,11 +110,8 @@ def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
     signed_txn = VersionedTransaction.populate(raw_txn.message, [signature])
 
     result = config().client.send_raw_transaction(bytes(signed_txn), opts)
-    print(result)
     txid = result.value
     log_transaction.info(f"Soltrade TxID: {txid}")
-    verified_tx = get_transaction_details(txid)
-    log_transaction.info(f"Soltrade Verified on Chain! {verified_tx}")
     return txid
 
 
@@ -219,7 +190,7 @@ async def perform_swap(sent_amount: float, sent_token_mint: str):
             f"Sold {sent_amount} {config().primary_mint_symbol} for {bought_amount:.6f} {config().secondary_mint_symbol}"
         )
     else:
-        usdc_decimals = 10 ** 6  # TODO: make this a constant variable in utils.py
+        usdc_decimals = 10**6  # TODO: make this a constant variable in utils.py
         bought_amount = int(quote["outAmount"]) / usdc_decimals
         log_transaction.info(
             f"Sold {sent_amount} {config().secondary_mint_symbol} for {bought_amount:.2f} {config().primary_mint_symbol}"

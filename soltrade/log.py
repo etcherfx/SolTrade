@@ -59,7 +59,7 @@ def setup_logger(
 
     if add_to_general:
         general_handler = RotatingFileHandler(
-            "general_log.log", maxBytes=1000000, backupCount=5
+            "general.log", maxBytes=1000000, backupCount=5
         )
         general_handler.setFormatter(file_formatter)
         logger.addHandler(general_handler)
