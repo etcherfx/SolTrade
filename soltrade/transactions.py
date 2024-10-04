@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import os
+import pandas as pd
 
 import httpx
 from solana.rpc.core import RPCException
@@ -20,16 +21,21 @@ class MarketPosition:
         self.is_open = False
         self.sl = 0
         self.tp = 0
+        self.ensure_directory_exists()
         self.load_position()
         self.update_position(self.is_open, self.sl, self.tp)
 
+    def ensure_directory_exists(self):
+        directory = os.path.dirname(self.path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
     def load_position(self):
         if os.path.exists(self.path):
-            with open(self.path, "r") as file:
-                position_data = json.load(file)
-                self.is_open = position_data["is_open"]
-                self.sl = position_data["sl"]
-                self.tp = position_data["tp"]
+            df = pd.read_csv(self.path)
+            self.is_open = df.loc[0, "is_open"]
+            self.sl = df.loc[0, "sl"]
+            self.tp = df.loc[0, "tp"]
         else:
             self.update_position(self.is_open, self.sl, self.tp)
 
@@ -37,9 +43,9 @@ class MarketPosition:
         self.sl = stoploss
         self.tp = takeprofit
         self.is_open = position
-        position_obj = {"is_open": position, "sl": stoploss, "tp": takeprofit}
-        with open(self.path, "w") as file:
-            json.dump(position_obj, file)
+        position_data = {"is_open": [position], "sl": [stoploss], "tp": [takeprofit]}
+        df = pd.DataFrame(position_data)
+        df.to_csv(self.path, index=False)
 
     @property
     def position(self):
