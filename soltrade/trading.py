@@ -2,6 +2,7 @@ import asyncio
 import pandas as pd
 import requests
 import os
+from tabulate import tabulate
 from apscheduler.schedulers.background import BlockingScheduler
 
 from soltrade.config import config
@@ -61,7 +62,30 @@ def perform_analysis():
     except FileNotFoundError:
         df = new_df
 
-    print(df.tail(2))
+    last_row = df.tail(1)
+
+    # Custom headers
+    custom_headers = {
+        "close": "Closing Price",
+        "high": "Highest Price",
+        "low": "Lowest Price",
+        "open": "Opening Price",
+        "time": "Timestamp",
+        "ema_s": "EMA Short",
+        "ema_m": "EMA Medium",
+        "upper_bband": "Upper Bollinger Band",
+        "lower_bband": "Lower Bollinger Band",
+        "rsi": "RSI",
+        "entry": "Entry Signal",
+        "exit": "Exit Signal",
+        "entry_price": "Entry Price",
+        "stoploss": "Stoploss",
+        "trailing_stoploss": "Trailing Stoploss",
+        "trailing_stoploss_target": "Trailing Stoploss Target",
+    }
+
+    last_row = last_row.rename(columns=custom_headers)
+    print(tabulate(last_row.T, headers="keys", tablefmt="rounded_grid"))
 
     config_instance = config()
     primary_mint = config_instance.primary_mint

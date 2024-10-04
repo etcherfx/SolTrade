@@ -160,5 +160,5 @@ cython_debug/
 .idea/
 
 config.json
-data.json
-position.json
+data.csv
+position.csv
