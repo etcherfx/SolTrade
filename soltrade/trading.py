@@ -1,9 +1,7 @@
 import asyncio
-import json
-from io import StringIO
-
 import pandas as pd
 import requests
+import os
 from apscheduler.schedulers.background import BlockingScheduler
 
 from soltrade.config import config
@@ -17,7 +15,7 @@ from soltrade.strategy import (
 from soltrade.transactions import perform_swap, market
 from soltrade.wallet import find_balance
 
-market("position.json")
+market("data/position.csv")
 
 
 # Pulls the candlestick information in fifteen minute intervals
@@ -50,11 +48,19 @@ def perform_analysis():
 
     # Creates DataFrame for manipulation
     columns = ["close", "high", "low", "open", "time"]
-    df = pd.DataFrame(candle_dict, columns=columns)
-    df["time"] = pd.to_datetime(df["time"], unit="s")
-    cl = df["close"]
-    df = strategy(df)
-    data_file_path = "data.csv"
+    new_df = pd.DataFrame(candle_dict, columns=columns)
+    new_df["time"] = pd.to_datetime(new_df["time"], unit="s")
+    new_df = strategy(new_df)
+    data_file_path = "data/data.csv"
+
+    try:
+        existing_df = read_dataframe_from_csv(data_file_path)
+        df = pd.concat([existing_df, new_df]).drop_duplicates(
+            subset="time", keep="last"
+        )
+    except FileNotFoundError:
+        df = new_df
+
     print(df.tail(2))
 
     config_instance = config()
@@ -80,7 +86,7 @@ def perform_analysis():
                 df = calc_stoploss(df)
                 df = calc_trailing_stoploss(df)
                 print(df.tail(2))
-                takeprofit = cl.iat[-1] * 1.25
+                takeprofit = df["close"].iat[-1] * 1.25
                 market_instance.update_position(
                     True, df["stoploss"].iloc[-1], takeprofit
                 )
@@ -88,9 +94,6 @@ def perform_analysis():
             return
 
     else:
-        # Read DataFrame from JSON file
-        df = read_dataframe_from_csv(data_file_path)
-        print(df.tail(2))
         input_amount = find_balance(secondary_mint)
         df = calc_trailing_stoploss(df)
         stoploss = df["stoploss"].iloc[-1]
@@ -142,7 +145,15 @@ def start_trading():
 
 # Function to save DataFrame to CSV file
 def save_dataframe_to_csv(df, file_path):
-    df.to_csv(file_path, index=False)
+    try:
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+        # Save the DataFrame to a CSV file
+        df.to_csv(file_path, index=False)
+        print(f"DataFrame successfully saved to {file_path}")
+    except Exception as e:
+        print(f"Failed to save DataFrame to {file_path}: {e}")
 
 
 # Function to read DataFrame from CSV file
