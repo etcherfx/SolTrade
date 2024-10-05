@@ -8,6 +8,7 @@
   "trading_interval_minutes": 1,
   "slippage": 50,
   "stoploss": 8.5,
+  "takeprofit": 25,
   "trailing_stoploss_target": 5,
   "trailing_stoploss": 1.5,
   "telegram": false,

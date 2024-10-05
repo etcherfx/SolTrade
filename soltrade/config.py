@@ -24,6 +24,7 @@ class Config:
         self.trading_interval_minutes = None
         self.slippage = None  # BPS
         self.stoploss = None  # %
+        self.takeprofit = None  # %
         self.trailing_stoploss_target = None  # %
         self.trailing_stoploss = None  # %
         self.telegram = None
@@ -48,6 +49,7 @@ class Config:
             "trading_interval_minutes": 1,
             "slippage": 50,
             "stoploss": 20,
+            "takeprofit": 25,
             "trailing_stoploss_target": 5,
             "trailing_stoploss": 1.5,
             "telegram": None,

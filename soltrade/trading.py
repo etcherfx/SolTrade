@@ -12,6 +12,7 @@ from soltrade.strategy import (
     calc_stoploss,
     calc_trailing_stoploss,
     calc_entry_price,
+    calc_takeprofit,
 )
 from soltrade.transactions import perform_swap, market
 from soltrade.wallet import find_balance
@@ -94,6 +95,7 @@ def perform_analysis():
         "exit": "Exit Signal",
         "entry_price": "Entry Price",
         "stoploss": "Stoploss",
+        "takeprofit": "Take Profit",
         "trailing_stoploss": "Trailing Stoploss",
         "trailing_stoploss_target": "Trailing Stoploss Target",
     }
@@ -111,20 +113,22 @@ def handle_buy_signal(df, market_instance, data_file_path):
     if df["entry"].iloc[-1] == 1:
         if input_amount <= 0:
             log_transaction.info(
-                f"Soltrade has detected a buy signal, but does not have enough {primary_mint_symbol} to trade."
+                f"SolTrade has detected a buy signal, but does not have enough {primary_mint_symbol} to trade."
             )
             return
         log_transaction.info(
-            f"Soltrade has detected a buy signal using {input_amount} {primary_mint_symbol}."
+            f"SolTrade has detected a buy signal using {input_amount} {primary_mint_symbol}."
         )
         is_swapped = asyncio.run(perform_swap(input_amount, primary_mint))
         if is_swapped:
             df = calc_entry_price(df)
             df = calc_stoploss(df)
+            df = calc_takeprofit(df)
             df = calc_trailing_stoploss(df)
             print(tabulate(df.iloc[[-2]].T, headers="keys", tablefmt="rounded_grid"))
-            takeprofit = df["close"].iat[-1] * 1.25
-            market_instance.update_position(True, df["stoploss"].iloc[-1], takeprofit)
+            market_instance.update_position(
+                True, df["stoploss"].iat[-1], df["takeprofit"].iat[-1]
+            )
         save_dataframe_to_csv(df, data_file_path)
 
 
@@ -132,23 +136,30 @@ def handle_sell_signal(df, market_instance, data_file_path):
     input_amount = find_balance(secondary_mint)
     df = calc_trailing_stoploss(df)
     stoploss = df["stoploss"].iloc[-1]
+    takeprofit = df["takeprofit"].iloc[-1]
     trailing_stoploss = df["trailing_stoploss"].iloc[-1]
 
     if df["close"].iloc[-1] <= stoploss:
         log_transaction.info(
-            f"Soltrade has detected a sell signal for {input_amount} {secondary_mint_symbol}. Stoploss has been reached."
+            f"SolTrade has detected a sell signal for {input_amount} {secondary_mint_symbol}. Stoploss has been reached."
         )
         asyncio.run(perform_swap(input_amount, secondary_mint))
         update_position_and_save(df, market_instance, data_file_path)
     elif trailing_stoploss is not None and df["close"].iloc[-1] < trailing_stoploss:
         log_transaction.info(
-            f"Soltrade has detected a sell signal for {input_amount} {secondary_mint_symbol}. Trailing stoploss has been reached."
+            f"SolTrade has detected a sell signal for {input_amount} {secondary_mint_symbol}. Trailing stoploss has been reached."
+        )
+        asyncio.run(perform_swap(input_amount, secondary_mint))
+        update_position_and_save(df, market_instance, data_file_path)
+    elif df["close"].iloc[-1] >= takeprofit:
+        log_transaction.info(
+            f"SolTrade has detected a sell signal for {input_amount} {secondary_mint_symbol}. Takeprofit has been reached."
         )
         asyncio.run(perform_swap(input_amount, secondary_mint))
         update_position_and_save(df, market_instance, data_file_path)
     elif df["exit"].iloc[-1] == 1:
         log_transaction.info(
-            f"Soltrade has detected a sell signal for {input_amount} {secondary_mint_symbol}."
+            f"SolTrade has detected a sell signal for {input_amount} {secondary_mint_symbol}."
         )
         asyncio.run(perform_swap(input_amount, secondary_mint))
         update_position_and_save(df, market_instance, data_file_path)
@@ -163,6 +174,7 @@ def update_position_and_save(df, market_instance, data_file_path):
             "entry_price",
             "trailing_stoploss",
             "trailing_stoploss_target",
+            "takeprofit",
         ]
     )
     save_dataframe_to_csv(df, data_file_path)
