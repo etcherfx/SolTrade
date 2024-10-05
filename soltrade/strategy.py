@@ -12,12 +12,12 @@ def strategy(df: pd.DataFrame):
 
         ### Populate default indicators
         # Calculates EMA
-        df["ema_s"] = ta.ema(df["close"], length=8)
+        df["ema_s"] = ta.ema(df["close"], length=5)
         df["ema_m"] = ta.ema(df["close"], length=21)
 
         # Bollinger Bands
-        sma = ta.sma(df["close"], length=20)
-        std = df["close"].rolling(20).std()
+        sma = ta.sma(df["close"], length=14)
+        std = df["close"].rolling(14).std()
         df["upper_bband"] = sma + std * 2
         df["lower_bband"] = sma - std * 2
 
@@ -43,23 +43,24 @@ def strategy(df: pd.DataFrame):
 
 
 def calc_entry_price(df):
-    # Calculate the entry price based on the DataFrame
     entry_price = df["close"].iloc[-1]
     df["entry_price"] = entry_price
     return df
 
 
 def calc_stoploss(df):
-    # Can also write custom stoploss functions using indicators.
     sl = float(config().stoploss)
+    df["stoploss"] = df["close"].iat[-1] * (1 - sl / 100)
+    return df
 
-    df["stoploss"] = df["entry_price"].iloc[-1] * (1 - sl / 100)
 
+def calc_takeprofit(df):
+    tp = float(config().takeprofit)
+    df["takeprofit"] = df["close"].iat[-1] * (1 + tp / 100)
     return df
 
 
 def calc_trailing_stoploss(df):
-    # Can also write custom stoploss functions using indicators.
     tsl = float(config().trailing_stoploss)
     tslt = float(config().trailing_stoploss_target)
 
