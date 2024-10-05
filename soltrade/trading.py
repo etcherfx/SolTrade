@@ -2,6 +2,7 @@ import asyncio
 import pandas as pd
 import requests
 import os
+import sys
 from tabulate import tabulate
 from apscheduler.schedulers.background import BlockingScheduler
 
@@ -36,18 +37,12 @@ def fetch_candlestick() -> dict:
     return response.json()
 
 
-# Analyzes the current market variables and determines trades
 def perform_analysis():
     log_general.debug("Soltrade is analyzing the market; no trade has been executed.")
-
     market_instance = market()
     market_instance.load_position()
-
-    # Converts JSON response for DataFrame manipulation
     candle_json = fetch_candlestick()
     candle_dict = candle_json["Data"]["Data"]
-
-    # Creates DataFrame for manipulation
     columns = ["close", "high", "low", "open", "time"]
     new_df = pd.DataFrame(candle_dict, columns=columns)
     new_df["time"] = pd.to_datetime(new_df["time"], unit="s")
@@ -56,21 +51,37 @@ def perform_analysis():
 
     try:
         existing_df = read_dataframe_from_csv(data_file_path)
-        df = pd.concat([existing_df, new_df]).drop_duplicates(
+        combined_df = pd.concat([existing_df, new_df]).drop_duplicates(
             subset="time", keep="last"
         )
+
+        second_to_last_index = new_df.index[-2]
+
+        df = pd.concat(
+            [
+                new_df.iloc[:second_to_last_index],
+                combined_df,
+                new_df.iloc[second_to_last_index:],
+            ]
+        ).drop_duplicates(subset="time", keep="last")
+
+        if "entry_price" in df.columns:
+            df["entry_price"] = df.iloc[0]["entry_price"]
+        if "stoploss" in df.columns:
+            df["stoploss"] = df.iloc[0]["stoploss"]
+        if "trailing_stoploss" in df.columns:
+            df["trailing_stoploss"] = df.iloc[0]["trailing_stoploss"]
+        if "trailing_stoploss_target" in df.columns:
+            df["trailing_stoploss_target"] = df.iloc[0]["trailing_stoploss_target"]
     except FileNotFoundError:
         df = new_df
 
-    last_row = df.tail(1)
+    last_row = df.iloc[[-2]]
 
-    # Custom headers
+    last_row = last_row.drop(columns=["high", "low", "open", "time"])
+
     custom_headers = {
-        "close": "Closing Price",
-        "high": "Highest Price",
-        "low": "Lowest Price",
-        "open": "Opening Price",
-        "time": "Timestamp",
+        "close": "Price",
         "ema_s": "EMA Short",
         "ema_m": "EMA Medium",
         "upper_bband": "Upper Bollinger Band",
@@ -85,6 +96,7 @@ def perform_analysis():
     }
 
     last_row = last_row.rename(columns=custom_headers)
+    # print(last_row)
     print(tabulate(last_row.T, headers="keys", tablefmt="rounded_grid"))
 
     config_instance = config()
@@ -109,7 +121,7 @@ def perform_analysis():
                 df = calc_entry_price(df)
                 df = calc_stoploss(df)
                 df = calc_trailing_stoploss(df)
-                print(df.tail(2))
+                print(tabulate(last_row.T, headers="keys", tablefmt="rounded_grid"))
                 takeprofit = df["close"].iat[-1] * 1.25
                 market_instance.update_position(
                     True, df["stoploss"].iloc[-1], takeprofit
@@ -123,37 +135,57 @@ def perform_analysis():
         stoploss = df["stoploss"].iloc[-1]
         trailing_stoploss = df["trailing_stoploss"].iloc[-1]
 
-        # Check Stoploss
         if df["close"].iloc[-1] <= stoploss:
             log_transaction.info(
                 f"Soltrade has detected a sell signal for {input_amount} ${secondary_mint_symbol}. Stoploss has been reached."
             )
             asyncio.run(perform_swap(input_amount, secondary_mint))
             stoploss = takeprofit = 0
-            df["entry_price"] = None
+            market_instance.update_position(False, stoploss, takeprofit)
+            df = df.drop(
+                columns=[
+                    "stoploss",
+                    "entry_price",
+                    "trailing_stoploss",
+                    "trailing_stoploss_target",
+                ]
+            )
 
-        # Check Trailing Stoploss
         elif trailing_stoploss is not None and df["close"].iloc[-1] < trailing_stoploss:
             log_transaction.info(
                 f"Soltrade has detected a sell signal for {input_amount} ${secondary_mint_symbol}. Trailing stoploss has been reached."
             )
             asyncio.run(perform_swap(input_amount, secondary_mint))
             stoploss = takeprofit = 0
-            df["entry_price"] = None
+            market_instance.update_position(False, stoploss, takeprofit)
+            df = df.drop(
+                columns=[
+                    "stoploss",
+                    "entry_price",
+                    "trailing_stoploss",
+                    "trailing_stoploss_target",
+                ]
+            )
 
-        # Check Strategy
         elif df["exit"].iloc[-1] == 1:
             log_transaction.info(
                 f"Soltrade has detected a sell signal for {input_amount} ${secondary_mint_symbol}."
             )
             asyncio.run(perform_swap(input_amount, secondary_mint))
             stoploss = takeprofit = 0
-            df["entry_price"] = None
+            market_instance.update_position(False, stoploss, takeprofit)
+            df = df.drop(
+                columns=[
+                    "stoploss",
+                    "entry_price",
+                    "trailing_stoploss",
+                    "trailing_stoploss_target",
+                ]
+            )
 
         save_dataframe_to_csv(df, data_file_path)
 
 
-# This starts the trading function on a timer
 def start_trading():
     log_general.info("Soltrade has now initialized the trading algorithm.")
     trading_sched = BlockingScheduler()
@@ -167,19 +199,14 @@ def start_trading():
     perform_analysis()
 
 
-# Function to save DataFrame to CSV file
 def save_dataframe_to_csv(df, file_path):
     try:
-        # Ensure the directory exists
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-        # Save the DataFrame to a CSV file
         df.to_csv(file_path, index=False)
         print(f"DataFrame successfully saved to {file_path}")
     except Exception as e:
         print(f"Failed to save DataFrame to {file_path}: {e}")
 
 
-# Function to read DataFrame from CSV file
 def read_dataframe_from_csv(file_path):
     return pd.read_csv(file_path)
