@@ -1,5 +1,6 @@
 import logging
 import sys
+import os
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 
@@ -34,32 +35,31 @@ class AutoFlushStreamHandler(StreamHandler):
         self.flush()
 
 
+os.makedirs("logs", exist_ok=True)
+
+
 def setup_logger(
     name, log_file, level=logging.INFO, add_to_general=False
 ) -> logging.Logger:
     """Function to set up a logger with rotating file handler and console output."""
-    # Formatter without color codes for file output
     file_formatter = logging.Formatter(
         "%(asctime)s     %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-    # File handler setup
-    file_handler = RotatingFileHandler(log_file, maxBytes=1000000, backupCount=5)
+    file_handler = RotatingFileHandler(
+        f"logs/{log_file}", maxBytes=1000000, backupCount=5
+    )
     file_handler.setFormatter(file_formatter)
-
-    # Logger setup
     logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.addHandler(file_handler)
-
-    # Console handler with color codes
     console_handler = AutoFlushStreamHandler(sys.stdout)
     console_handler.setFormatter(CustomFormatter())
     logger.addHandler(console_handler)
 
     if add_to_general:
         general_handler = RotatingFileHandler(
-            "general.log", maxBytes=1000000, backupCount=5
+            "logs/general.log", maxBytes=1000000, backupCount=5
         )
         general_handler.setFormatter(file_formatter)
         logger.addHandler(general_handler)
@@ -67,7 +67,6 @@ def setup_logger(
     return logger
 
 
-# Creating two loggers, with transaction logger also writing to general log
 log_general = setup_logger("general_logger", "general.log", level=logging.DEBUG)
 log_transaction = setup_logger(
     "transaction_logger", "transaction.log", add_to_general=True, level=logging.DEBUG
