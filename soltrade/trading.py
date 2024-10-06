@@ -74,6 +74,7 @@ def perform_analysis():
         ).drop_duplicates(subset="time", keep="last")
         for col in [
             "entry_price",
+            "takeprofit",
             "stoploss",
             "trailing_stoploss",
             "trailing_stoploss_target",
@@ -125,7 +126,6 @@ def handle_buy_signal(df, market_instance, data_file_path):
             df = calc_stoploss(df)
             df = calc_takeprofit(df)
             df = calc_trailing_stoploss(df)
-            print(tabulate(df.iloc[[-2]].T, headers="keys", tablefmt="rounded_grid"))
             market_instance.update_position(
                 True, df["stoploss"].iat[-1], df["takeprofit"].iat[-1]
             )
