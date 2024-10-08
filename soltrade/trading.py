@@ -17,7 +17,6 @@ from soltrade.strategy import (
 from soltrade.transactions import perform_swap, market
 from soltrade.wallet import find_balance
 
-# Load configuration once
 config_instance = config()
 primary_mint = config_instance.primary_mint
 primary_mint_symbol = config_instance.primary_mint_symbol
@@ -28,6 +27,21 @@ trading_interval_minutes = config_instance.trading_interval_minutes
 price_update_seconds = config_instance.price_update_seconds
 
 market("data/position.csv")
+
+initial_primary_balance = find_balance(primary_mint)
+initial_secondary_balance = find_balance(secondary_mint)
+
+
+def fetch_initial_price():
+    url = "https://min-api.cryptocompare.com/data/price"
+    headers = {"authorization": api_key}
+    params_secondary = {"fsym": secondary_mint_symbol, "tsyms": "USD"}
+    response_secondary = requests.get(url, headers=headers, params=params_secondary)
+    initial_secondary_price = response_secondary.json().get("USD", 0)
+    return initial_secondary_price
+
+
+initial_secondary_price = fetch_initial_price()
 
 
 def fetch_candlestick() -> dict:
@@ -47,6 +61,10 @@ def fetch_candlestick() -> dict:
     return response_json
 
 
+def format_as_money(value):
+    return "${:,.2f}".format(value)
+
+
 def perform_analysis():
     log_general.debug("Soltrade is analyzing the market; no trade has been executed.")
     market_instance = market()
@@ -57,6 +75,7 @@ def perform_analysis():
     new_df = pd.DataFrame(candle_dict, columns=columns)
     new_df["time"] = pd.to_datetime(new_df["time"], unit="s")
     new_df = strategy(new_df)
+    new_df["total_profit"] = 0
     data_file_path = "data/data.csv"
 
     try:
@@ -84,6 +103,19 @@ def perform_analysis():
     except FileNotFoundError:
         df = new_df
 
+    # Assuming primary mint is USDC
+    current_primary_balance = find_balance(primary_mint)
+    current_secondary_balance = find_balance(secondary_mint)
+    initial_total_value = initial_primary_balance + (
+        initial_secondary_balance * initial_secondary_price
+    )
+    current_total_value = current_primary_balance + (
+        current_secondary_balance * df["close"].iloc[-1]
+    )
+    total_profit = current_total_value - initial_total_value
+    df["total_profit"] = total_profit
+    df["total_profit"] = df["total_profit"].apply(format_as_money)
+
     last_row = df.iloc[[-2]].drop(columns=["high", "low", "open", "time"])
     custom_headers = {
         "close": "Price",
@@ -99,6 +131,7 @@ def perform_analysis():
         "takeprofit": "Take Profit",
         "trailing_stoploss": "Trailing Stoploss",
         "trailing_stoploss_target": "Trailing Stoploss Target",
+        "total_profit": "Total Profit",
     }
     last_row = last_row.rename(columns=custom_headers)
     print(tabulate(last_row.T, headers="keys", tablefmt="rounded_grid"))
