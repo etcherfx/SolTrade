@@ -7,9 +7,6 @@ from .base_strategy import BaseStrategy
 class DefaultStrategy(BaseStrategy):
     def apply_strategy(self):
         if config().strategy == "default":
-            if config().strategy is None:
-                log_general.info("No strategy selected in config.json using default")
-
             ### Populate default indicators:
 
             # Calculates EMA
