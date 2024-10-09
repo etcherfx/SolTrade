@@ -220,7 +220,6 @@ def start_trading():
         perform_analysis, "interval", seconds=price_update_seconds, max_instances=1
     )
     trading_sched.start()
-    perform_analysis()
 
 
 def save_dataframe_to_csv(df, file_path):
