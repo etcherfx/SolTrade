@@ -23,10 +23,6 @@ class Config:
         self.price_update_seconds = None
         self.trading_interval_minutes = None
         self.slippage = None  # BPS
-        self.stoploss = None  # %
-        self.takeprofit = None  # %
-        self.trailing_stoploss_target = None  # %
-        self.trailing_stoploss = None  # %
         self.telegram = None
         self.tg_bot_token = None
         self.tg_bot_uid = None
@@ -48,10 +44,6 @@ class Config:
             "price_update_seconds": 30,
             "trading_interval_minutes": 1,
             "slippage": 50,
-            "stoploss": 20,
-            "takeprofit": 25,
-            "trailing_stoploss_target": 5,
-            "trailing_stoploss": 1.5,
             "telegram": None,
             "tg_bot_token": None,
             "tg_bot_uid": None,

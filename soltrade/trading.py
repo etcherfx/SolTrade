@@ -32,16 +32,17 @@ initial_primary_balance = find_balance(primary_mint)
 initial_secondary_balance = find_balance(secondary_mint)
 
 
-def fetch_initial_price():
+def fetch_price(symbol):
     url = "https://min-api.cryptocompare.com/data/price"
     headers = {"authorization": api_key}
-    params_secondary = {"fsym": secondary_mint_symbol, "tsyms": "USD"}
-    response_secondary = requests.get(url, headers=headers, params=params_secondary)
-    initial_secondary_price = response_secondary.json().get("USD", 0)
-    return initial_secondary_price
+    params = {"fsym": symbol, "tsyms": "USD"}
+    response = requests.get(url, headers=headers, params=params)
+    price = response.json().get("USD", 0)
+    return price
 
 
-initial_secondary_price = fetch_initial_price()
+initial_primary_price = fetch_price(primary_mint_symbol)
+initial_secondary_price = fetch_price(secondary_mint_symbol)
 
 
 def fetch_candlestick() -> dict:
@@ -106,17 +107,17 @@ def perform_analysis():
     # Assuming primary mint is USDC
     current_primary_balance = find_balance(primary_mint)
     current_secondary_balance = find_balance(secondary_mint)
-    initial_total_value = initial_primary_balance + (
+    initial_total_value = (initial_primary_balance * initial_primary_price) + (
         initial_secondary_balance * initial_secondary_price
     )
-    current_total_value = current_primary_balance + (
-        current_secondary_balance * df["close"].iloc[-1]
-    )
+    current_total_value = (
+        current_primary_balance * fetch_price(primary_mint_symbol)
+    ) + (current_secondary_balance * fetch_price(secondary_mint_symbol))
     total_profit = current_total_value - initial_total_value
     df["total_profit"] = total_profit
     df["total_profit"] = df["total_profit"].apply(format_as_money)
 
-    last_row = df.iloc[[-2]].drop(columns=["high", "low", "open", "time"])
+    last_row = df.iloc[[-1]].drop(columns=["high", "low", "open", "time"])
     custom_headers = {
         "close": "Price",
         "ema_s": "EMA Short",
@@ -144,7 +145,7 @@ def perform_analysis():
 
 def handle_buy_signal(df, market_instance, data_file_path):
     input_amount = find_balance(primary_mint)
-    if df["entry"].iloc[-1] == 1:
+    if df["entry"].iat[-1] == 1:
         if input_amount <= 0:
             log_transaction.info(
                 f"SolTrade has detected a buy signal, but does not have enough {primary_mint_symbol} to trade."
@@ -168,49 +169,23 @@ def handle_buy_signal(df, market_instance, data_file_path):
 def handle_sell_signal(df, market_instance, data_file_path):
     input_amount = find_balance(secondary_mint)
     df = calc_trailing_stoploss(df)
-    stoploss = df["stoploss"].iloc[-1]
-    takeprofit = df["takeprofit"].iloc[-1]
-    trailing_stoploss = df["trailing_stoploss"].iloc[-1]
 
-    if df["close"].iloc[-1] <= stoploss:
-        log_transaction.info(
-            f"SolTrade has detected a sell signal for {input_amount} {secondary_mint_symbol}. Stoploss has been reached."
-        )
-        asyncio.run(perform_swap(input_amount, secondary_mint))
-        update_position_and_save(df, market_instance, data_file_path)
-    elif trailing_stoploss is not None and df["close"].iloc[-1] < trailing_stoploss:
-        log_transaction.info(
-            f"SolTrade has detected a sell signal for {input_amount} {secondary_mint_symbol}. Trailing stoploss has been reached."
-        )
-        asyncio.run(perform_swap(input_amount, secondary_mint))
-        update_position_and_save(df, market_instance, data_file_path)
-    elif df["close"].iloc[-1] >= takeprofit:
-        log_transaction.info(
-            f"SolTrade has detected a sell signal for {input_amount} {secondary_mint_symbol}. Takeprofit has been reached."
-        )
-        asyncio.run(perform_swap(input_amount, secondary_mint))
-        update_position_and_save(df, market_instance, data_file_path)
-    elif df["exit"].iloc[-1] == 1:
+    if df["exit"].iat[-1] == 1:
         log_transaction.info(
             f"SolTrade has detected a sell signal for {input_amount} {secondary_mint_symbol}."
         )
         asyncio.run(perform_swap(input_amount, secondary_mint))
-        update_position_and_save(df, market_instance, data_file_path)
-
-
-def update_position_and_save(df, market_instance, data_file_path):
-    stoploss = takeprofit = 0
-    market_instance.update_position(False, stoploss, takeprofit)
-    df = df.drop(
-        columns=[
-            "stoploss",
-            "entry_price",
-            "trailing_stoploss",
-            "trailing_stoploss_target",
-            "takeprofit",
-        ]
-    )
-    save_dataframe_to_csv(df, data_file_path)
+        market_instance.update_position(False, 0, 0)
+        df = df.drop(
+            columns=[
+                "stoploss",
+                "entry_price",
+                "trailing_stoploss",
+                "trailing_stoploss_target",
+                "takeprofit",
+            ]
+        )
+        save_dataframe_to_csv(df, data_file_path)
 
 
 def start_trading():
