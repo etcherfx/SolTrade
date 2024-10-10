@@ -41,7 +41,7 @@ class Config:
             "primary_mint_symbol": "USDC",
             "secondary_mint": "So11111111111111111111111111111111111111112",
             "secondary_mint_symbol": "SOL",
-            "price_update_seconds": 30,
+            "price_update_seconds": 60,
             "trading_interval_minutes": 1,
             "slippage": 50,
             "telegram": None,
