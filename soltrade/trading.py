@@ -104,7 +104,6 @@ def perform_analysis():
     except FileNotFoundError:
         df = new_df
 
-    # Assuming primary mint is USDC
     current_primary_balance = find_balance(primary_mint)
     current_secondary_balance = find_balance(secondary_mint)
     initial_total_value = (initial_primary_balance * initial_primary_price) + (

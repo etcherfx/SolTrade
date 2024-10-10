@@ -71,10 +71,11 @@ async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
     # Determines what mint address should be used in the api link
     if input_token_mint == config().primary_mint:
         output_token_mint = config().secondary_mint
-        token_decimals = 10**6  # USDC decimals
+        token_decimals = config().decimals(config().primary_mint)
+        print(token_decimals)
     else:
         output_token_mint = config().primary_mint
-        token_decimals = config().decimals
+        token_decimals = config().decimals(config().secondary_mint)
 
     # Finds the response and converts it into a readable array
     api_link = f"https://api.jup.ag/swap/v6/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&slippageBps={config().slippage}"
@@ -190,14 +191,14 @@ async def perform_swap(sent_amount: float, sent_token_mint: str):
         return False
 
     if sent_token_mint == config().primary_mint:
-        decimals = config().decimals
+        decimals = config().decimals(config().secondary_mint)
         bought_amount = int(quote["outAmount"]) / decimals
         log_transaction.info(
             f"Sold {sent_amount} {config().primary_mint_symbol} for {bought_amount:.6f} {config().secondary_mint_symbol}"
         )
     else:
-        usdc_decimals = 10**6  # TODO: make this a constant variable in utils.py
-        bought_amount = int(quote["outAmount"]) / usdc_decimals
+        decimals = config().decimals(config().primary_mint)
+        bought_amount = int(quote["outAmount"]) / decimals
         log_transaction.info(
             f"Sold {sent_amount} {config().secondary_mint_symbol} for {bought_amount:.2f} {config().primary_mint_symbol}"
         )
