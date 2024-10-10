@@ -39,17 +39,19 @@ class DefaultStrategy(BaseStrategy):
 
             # Exit
             exit = (
-                (
-                    (
-                        (self.df["ema_s"] < self.df["ema_m"])
-                        | (self.df["close"] > self.df["upper_bband"])
-                    )
-                    & (self.df["rsi"] >= 70)
-                )
-                | (self.df["close"] >= self.df["takeprofit"])
-                | (self.df["close"] <= self.df["stoploss"])
-                | (self.df["close"] <= self.df["trailing_stoploss"])
-            )
+                (self.df["ema_s"] < self.df["ema_m"])
+                | (self.df["close"] > self.df["upper_bband"])
+            ) & (self.df["rsi"] >= 70)
+
+            if "takeprofit" in self.df.columns:
+                exit |= self.df["close"] >= self.df["takeprofit"]
+
+            if "stoploss" in self.df.columns:
+                exit |= self.df["close"] <= self.df["stoploss"]
+
+            if "trailing_stoploss" in self.df.columns:
+                exit |= self.df["close"] <= self.df["trailing_stoploss"]
+
             self.df.loc[exit, "exit"] = 1
 
         return self.df
