@@ -72,7 +72,6 @@ async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
     if input_token_mint == config().primary_mint:
         output_token_mint = config().secondary_mint
         token_decimals = config().decimals(config().primary_mint)
-        print(token_decimals)
     else:
         output_token_mint = config().primary_mint
         token_decimals = config().decimals(config().secondary_mint)

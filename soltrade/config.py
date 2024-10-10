@@ -82,7 +82,6 @@ class Config:
         rpc_url = self.rpc_https
         return Client(rpc_url)
 
-    @property
     def decimals(self, mint_address: str) -> int:
         response = self.client.get_account_info_json_parsed(
             Pubkey.from_string(mint_address)
