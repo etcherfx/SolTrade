@@ -15,6 +15,7 @@ class Config:
         self.api_key = None
         self.private_key = None
         self.rpc_https = None
+        self.jup_api = None
         self.primary_mint = None
         self.primary_mint_symbol = None
         self.sol_mint = "So11111111111111111111111111111111111111112"
@@ -36,7 +37,8 @@ class Config:
         self.private_key = os.getenv("WALLET_PRIVATE_KEY")
 
         default_config = {
-            "rpc_https": "https://api.mainnet-beta.solana.com/",
+            "rpc_https": "https://api.mainnet-beta.solana.com",
+            "jup_api": "https://api.jup.ag/swap/v6",
             "primary_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
             "primary_mint_symbol": "USDC",
             "secondary_mint": "So11111111111111111111111111111111111111112",
@@ -61,6 +63,16 @@ class Config:
             except json.JSONDecodeError as e:
                 print(f"Error loading config: {e}")
 
+    def decimals(self, mint_address: str) -> int:
+        response = self.client.get_account_info_json_parsed(
+            Pubkey.from_string(mint_address)
+        ).to_json()
+        json_response = json.loads(response)
+        value = (
+            10 ** json_response["result"]["value"]["data"]["parsed"]["info"]["decimals"]
+        )
+        return value
+
     @property
     def keypair(self) -> Keypair:
         try:
@@ -81,16 +93,6 @@ class Config:
     def client(self) -> Client:
         rpc_url = self.rpc_https
         return Client(rpc_url)
-
-    def decimals(self, mint_address: str) -> int:
-        response = self.client.get_account_info_json_parsed(
-            Pubkey.from_string(mint_address)
-        ).to_json()
-        json_response = json.loads(response)
-        value = (
-            10 ** json_response["result"]["value"]["data"]["parsed"]["info"]["decimals"]
-        )
-        return value
 
 
 _config_instance = None
