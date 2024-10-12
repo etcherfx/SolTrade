@@ -67,6 +67,7 @@ def format_as_money(value):
 
 
 def perform_analysis():
+    os.system("cls" if os.name == "nt" else "clear")
     log_general.debug("Soltrade is analyzing the market; no trade has been executed.")
     market_instance = market()
     market_instance.load_position()
@@ -116,6 +117,8 @@ def perform_analysis():
     df["total_profit"] = total_profit
     df["total_profit"] = df["total_profit"].apply(format_as_money)
 
+    df["position"] = "Open" if market_instance.position else "Closed"
+
     last_row = df.iloc[[-1]].drop(columns=["high", "low", "open", "time"])
     custom_headers = {
         "close": "Price",
@@ -132,6 +135,7 @@ def perform_analysis():
         "trailing_stoploss": "Trailing Stoploss",
         "trailing_stoploss_target": "Trailing Stoploss Target",
         "total_profit": "Total Profit",
+        "position": "Position",
     }
     last_row = last_row.rename(columns=custom_headers)
     print(tabulate(last_row.T, headers="keys", tablefmt="rounded_grid"))
