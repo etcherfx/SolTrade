@@ -77,7 +77,7 @@ async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
         token_decimals = config().decimals(config().secondary_mint)
 
     # Finds the response and converts it into a readable array
-    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&slippageBps={config().slippage}"
+    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&platformFeeBps=100"
     log_transaction.info(f"Soltrade API Link: {api_link}")
     async with httpx.AsyncClient() as client:
         response = await client.get(api_link)
@@ -95,13 +95,20 @@ async def create_transaction(quote: dict) -> dict:
     parameters = {
         "quoteResponse": quote,
         "userPublicKey": str(config().public_address),
-        "wrapUnwrapSOL": True,
+        "wrapAndUnwrapSol": True,
         "computeUnitPriceMicroLamports": 20 * 14000,  # fee of roughly $.04  :shrug:
+        "feeAccount": "44jKKtkFEo3doi9E9aqMpDrKSpAvRSDHosNQWLFPL5Qr",
+        "dynamicSlippage": {"maxBps": 50},
     }
 
     # Returns the JSON parsed response of Jupiter
     async with httpx.AsyncClient() as client:
-        response = await client.post(f"{config().jup_api}/transaction", json=parameters)
+        if config().jup_api == "https://api.jup.ag/swap/v6":
+            response = await client.post(
+                f"{config().jup_api}/transaction", json=parameters
+            )
+        else:
+            response = await client.post(f"{config().jup_api}/swap", json=parameters)
         return response.json()
 
 
