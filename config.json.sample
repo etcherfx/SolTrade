@@ -7,10 +7,6 @@
   "secondary_mint_symbol": "SOL",
   "price_update_seconds": 60,
   "trading_interval_minutes": 1,
-  "slippage": 50,
-  "telegram": false,
-  "tg_bot_token": "",
-  "tg_bot_uid": "",
-  "verbose": true,
+  "max_slippage": 50,
   "strategy": "default"
 }

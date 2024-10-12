@@ -23,7 +23,7 @@ class Config:
         self.secondary_mint_symbol = None
         self.price_update_seconds = None
         self.trading_interval_minutes = None
-        self.slippage = None  # BPS
+        self.max_slippage = None  # BPS
         self.telegram = None
         self.tg_bot_token = None
         self.tg_bot_uid = None
@@ -45,11 +45,7 @@ class Config:
             "secondary_mint_symbol": "SOL",
             "price_update_seconds": 60,
             "trading_interval_minutes": 1,
-            "slippage": 50,
-            "telegram": None,
-            "tg_bot_token": None,
-            "tg_bot_uid": None,
-            "verbose": True,
+            "max_slippage": 50,
             "strategy": "default",
         }
 

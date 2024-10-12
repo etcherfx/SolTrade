@@ -98,7 +98,7 @@ async def create_transaction(quote: dict) -> dict:
         "wrapAndUnwrapSol": True,
         "computeUnitPriceMicroLamports": 20 * 14000,  # fee of roughly $.04  :shrug:
         "feeAccount": "44jKKtkFEo3doi9E9aqMpDrKSpAvRSDHosNQWLFPL5Qr",
-        "dynamicSlippage": {"maxBps": 50},
+        "dynamicSlippage": {"maxBps": (config().max_slippage)},
     }
 
     # Returns the JSON parsed response of Jupiter
