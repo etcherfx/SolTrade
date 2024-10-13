@@ -13,7 +13,7 @@ def find_balance(token_mint: str) -> float:
     if token_mint == config().sol_mint:
         balance_response = config().client.get_balance(config().public_address).value
         balance_response = balance_response / (10**9)
-        return balance_response - 0.001
+        return balance_response - 0.01
 
     response = (
         config()
