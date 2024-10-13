@@ -177,17 +177,18 @@ def handle_sell_signal(df, market_instance, data_file_path):
         log_transaction.info(
             f"SolTrade has detected a sell signal for {input_amount} {secondary_mint_symbol}."
         )
-        asyncio.run(perform_swap(input_amount, secondary_mint))
-        market_instance.update_position(False, 0, 0)
-        df = df.drop(
-            columns=[
-                "stoploss",
-                "entry_price",
-                "trailing_stoploss",
-                "trailing_stoploss_target",
-                "takeprofit",
-            ]
-        )
+        is_swapped = asyncio.run(perform_swap(input_amount, secondary_mint))
+        if is_swapped:
+            market_instance.update_position(False, 0, 0)
+            df = df.drop(
+                columns=[
+                    "stoploss",
+                    "entry_price",
+                    "trailing_stoploss",
+                    "trailing_stoploss_target",
+                    "takeprofit",
+                ]
+            )
         save_dataframe_to_csv(df, data_file_path)
 
 
@@ -204,9 +205,9 @@ def save_dataframe_to_csv(df, file_path):
     try:
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         df.to_csv(file_path, index=False)
-        print(f"DataFrame successfully saved to {file_path}")
+        log_general.info(f"Data successfully saved to {file_path}")
     except Exception as e:
-        print(f"Failed to save DataFrame to {file_path}: {e}")
+        log_general.error(f"Failed to save data to {file_path}: {e}")
 
 
 def read_dataframe_from_csv(file_path):
