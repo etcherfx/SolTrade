@@ -136,6 +136,8 @@ def _(event):
 layout = get_layout()
 app = Application(layout=layout, full_screen=True, style=style, key_bindings=kb)
 
+app.output.show_cursor = lambda: None
+app.output.hide_cursor()
 result = app.run()
 
 if not result:
