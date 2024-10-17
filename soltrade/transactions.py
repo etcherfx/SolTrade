@@ -18,9 +18,6 @@ from soltrade.log import log_general, log_transaction
 class MarketPosition:
     def __init__(self, path):
         self.path = path
-        self.is_open = False
-        self.sl = 0
-        self.tp = 0
         self.ensure_directory_exists()
 
     def ensure_directory_exists(self):
@@ -51,7 +48,7 @@ async def create_exchange(
 
     # Finds the response and converts it into a readable array
     api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&platformFeeBps=100"
-    log_transaction.info(f"Soltrade API Link: {api_link}")
+    log_transaction.info(f"SolTrade API Link: {api_link}")
     async with httpx.AsyncClient() as client:
         response = await client.get(api_link)
         return response.json()
@@ -95,7 +92,7 @@ def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
 
     result = config().client.send_raw_transaction(bytes(signed_txn), opts)
     txid = result.value
-    log_transaction.info(f"Soltrade TxID: {txid}")
+    log_transaction.info(f"SolTrade TxID: {txid}")
     return txid
 
 
