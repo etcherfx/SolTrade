@@ -180,7 +180,7 @@ def perform_analysis():
         {"Total Profit": [format_as_money(total_profit)]},
     )
 
-    print(tabulate(profit_df, headers="keys", tablefmt="rounded_grid"))
+    print(tabulate(profit_df, headers="keys", tablefmt="rounded_grid", showindex=False))
 
     for df, secondary_mint, secondary_mint_symbol in zip(
         data_frames, secondary_mints, secondary_mint_symbols
@@ -272,7 +272,6 @@ def start_trading():
     trading_sched.add_job(
         perform_analysis, "interval", seconds=price_update_seconds, max_instances=1
     )
-    perform_analysis()
     trading_sched.start()
 
 
