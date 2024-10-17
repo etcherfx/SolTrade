@@ -22,34 +22,11 @@ class MarketPosition:
         self.sl = 0
         self.tp = 0
         self.ensure_directory_exists()
-        self.load_position()
-        self.update_position(self.is_open, self.sl, self.tp)
 
     def ensure_directory_exists(self):
         directory = os.path.dirname(self.path)
         if not os.path.exists(directory):
             os.makedirs(directory)
-
-    def load_position(self):
-        if os.path.exists(self.path):
-            df = pd.read_csv(self.path)
-            self.is_open = df.loc[0, "is_open"]
-            self.sl = df.loc[0, "sl"]
-            self.tp = df.loc[0, "tp"]
-        else:
-            self.update_position(self.is_open, self.sl, self.tp)
-
-    def update_position(self, position, stoploss, takeprofit):
-        self.sl = stoploss
-        self.tp = takeprofit
-        self.is_open = position
-        position_data = {"is_open": [position], "sl": [stoploss], "tp": [takeprofit]}
-        df = pd.DataFrame(position_data)
-        df.to_csv(self.path, index=False)
-
-    @property
-    def position(self):
-        return self.is_open
 
 
 _market_instance = None
@@ -63,18 +40,14 @@ def market(path=None):
 
 
 # Returns the route to be manipulated in createTransaction()
-async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
+async def create_exchange(
+    input_amount: int, input_token_mint: str, output_token_mint
+) -> dict:
     log_transaction.info(
-        f"Soltrade is creating exchange for {input_amount} {input_token_mint}"
+        f"SolTrade is creating exchange for {input_amount} {input_token_mint}"
     )
 
-    # Determines what mint address should be used in the api link
-    if input_token_mint == config().primary_mint:
-        output_token_mint = config().secondary_mint
-        token_decimals = config().decimals(config().primary_mint)
-    else:
-        output_token_mint = config().primary_mint
-        token_decimals = config().decimals(config().secondary_mint)
+    token_decimals = config().decimals(output_token_mint)
 
     # Finds the response and converts it into a readable array
     api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&platformFeeBps=100"
@@ -87,7 +60,7 @@ async def create_exchange(input_amount: int, input_token_mint: str) -> dict:
 # Returns the swap_transaction to be manipulated in sendTransaction()
 async def create_transaction(quote: dict) -> dict:
     log_transaction.info(
-        f"""Soltrade is creating transaction for the following quote: 
+        f"""SolTrade is creating transaction for the following quote: 
 {quote}"""
     )
 
@@ -147,9 +120,14 @@ def find_last_valid_block_height() -> dict:
 
 
 # Uses the previous functions and parameters to exchange Solana token currencies
-async def perform_swap(sent_amount: float, sent_token_mint: str):
-    global position
-    log_general.info("Soltrade is taking a market position.")
+async def perform_swap(
+    sent_amount: float,
+    sent_token_mint: str,
+    output_token_mint: str,
+    sent_token_symbol: str,
+    output_token_symbol: str,
+):
+    log_general.info("SolTrade is taking a market position.")
 
     quote = trans = opts = txid = tx_error = None
     is_tx_successful = False
@@ -157,7 +135,9 @@ async def perform_swap(sent_amount: float, sent_token_mint: str):
     for i in range(0, 3):
         if not is_tx_successful:
             try:
-                quote = await create_exchange(sent_amount, sent_token_mint)
+                quote = await create_exchange(
+                    sent_amount, sent_token_mint, output_token_mint
+                )
                 trans = await create_transaction(quote)
                 opts = TxOpts(
                     skip_preflight=False,
@@ -168,7 +148,7 @@ async def perform_swap(sent_amount: float, sent_token_mint: str):
             except Exception:
                 if RPCException:
                     log_general.warning(
-                        f"Soltrade failed to complete transaction {i}. Retrying."
+                        f"SolTrade failed to complete transaction {i}. Retrying."
                     )
                     continue
                 else:
@@ -182,7 +162,7 @@ async def perform_swap(sent_amount: float, sent_token_mint: str):
                         break
                 except TypeError:
                     log_general.warning(
-                        "Soltrade failed to verify the existence of the transaction. Retrying."
+                        "SolTrade failed to verify the existence of the transaction. Retrying."
                     )
                     continue
         else:
@@ -190,20 +170,13 @@ async def perform_swap(sent_amount: float, sent_token_mint: str):
 
     if tx_error or not is_tx_successful:
         log_general.error(
-            "Soltrade failed to complete the transaction due to slippage issues with Jupiter."
+            "SolTrade failed to complete the transaction due to slippage issues with Jupiter."
         )
         return False
 
-    if sent_token_mint == config().primary_mint:
-        decimals = config().decimals(config().secondary_mint)
-        bought_amount = int(quote["outAmount"]) / decimals
-        log_transaction.info(
-            f"Sold {sent_amount} {config().primary_mint_symbol} for {bought_amount:.6f} {config().secondary_mint_symbol}"
-        )
-    else:
-        decimals = config().decimals(config().primary_mint)
-        bought_amount = int(quote["outAmount"]) / decimals
-        log_transaction.info(
-            f"Sold {sent_amount} {config().secondary_mint_symbol} for {bought_amount:.2f} {config().primary_mint_symbol}"
-        )
+    decimals = config().decimals(output_token_mint)
+    bought_amount = int(quote["outAmount"]) / decimals
+    log_transaction.info(
+        f"Sold {sent_amount} {sent_token_symbol} for {bought_amount:.2f} {output_token_symbol}"
+    )
     return True

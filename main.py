@@ -17,7 +17,7 @@ config()
 
 
 def check_json_state() -> bool:
-    if config().keypair and config().secondary_mint:
+    if config().keypair and config().secondary_mints:
         return True
     return False
 

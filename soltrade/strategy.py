@@ -26,6 +26,11 @@ def strategy(df: pd.DataFrame):
     return df
 
 
+def set_position(df, position):
+    df["position"] = position
+    return df
+
+
 def calc_entry_price(df):
     entry_price = df["close"].iat[-1]
     df["entry_price"] = entry_price

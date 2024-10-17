@@ -19,8 +19,8 @@ class Config:
         self.primary_mint = None
         self.primary_mint_symbol = None
         self.sol_mint = "So11111111111111111111111111111111111111112"
-        self.secondary_mint = None
-        self.secondary_mint_symbol = None
+        self.secondary_mints = []
+        self.secondary_mint_symbols = []
         self.price_update_seconds = None
         self.trading_interval_minutes = None
         self.max_slippage = None  # BPS
@@ -41,8 +41,8 @@ class Config:
             "jup_api": "https://api.jup.ag/swap/v6",
             "primary_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
             "primary_mint_symbol": "USDC",
-            "secondary_mint": "So11111111111111111111111111111111111111112",
-            "secondary_mint_symbol": "SOL",
+            "secondary_mints": ["So11111111111111111111111111111111111111112"],
+            "secondary_mint_symbols": ["SOL"],
             "price_update_seconds": 60,
             "trading_interval_minutes": 1,
             "max_slippage": 50,
