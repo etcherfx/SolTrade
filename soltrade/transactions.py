@@ -52,7 +52,7 @@ async def create_exchange(
     token_decimals = config().decimals(output_token_mint)
 
     # Finds the response and converts it into a readable array
-    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&platformFeeBps=100"
+    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&minimizeSlippage=true&platformFeeBps=100"
     log_transaction.info(f"SolTrade API Link: {api_link}")
     async with httpx.AsyncClient() as client:
         response = await client.get(api_link)
@@ -73,7 +73,7 @@ async def create_transaction(quote: dict) -> dict:
         "wrapAndUnwrapSol": True,
         "computeUnitPriceMicroLamports": 20 * 14000,  # fee of roughly $.04  :shrug:
         "feeAccount": "44jKKtkFEo3doi9E9aqMpDrKSpAvRSDHosNQWLFPL5Qr",
-        "dynamicSlippage": {"maxBps": (config().max_slippage)},
+        "dynamicSlippage": {"maxBps": config().max_slippage},
     }
 
     # Returns the JSON parsed response of Jupiter
