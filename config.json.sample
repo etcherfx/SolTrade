@@ -8,5 +8,6 @@
   "price_update_seconds": 60,
   "trading_interval_minutes": 1,
   "max_slippage": 50,
+  "split_between_mints": "False",
   "strategy": "default"
 }

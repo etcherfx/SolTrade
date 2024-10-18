@@ -187,15 +187,11 @@ def perform_analysis():
     ):
         data_file_path = f"data/{secondary_mint_symbol}_data.csv"
         if not df["position"].iat[-1]:
-            if handle_buy_signal(
-                df, secondary_mint, data_file_path, secondary_mint_symbol
-            ):
-                break
+            handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol)
         else:
-            if handle_sell_signal(
+            handle_sell_signal(
                 df, secondary_mint, data_file_path, secondary_mint_symbol
-            ):
-                break
+            )
 
 
 def handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol):

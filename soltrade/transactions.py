@@ -40,6 +40,11 @@ def market(path=None):
 async def create_exchange(
     input_amount: int, input_token_mint: str, output_token_mint
 ) -> dict:
+    if config().split_between_mints and input_token_mint == config().primary_mint:
+        input_amount = input_amount / len(config().secondary_mints)
+        log_transaction.info(
+            f"SolTrade is creating exchange for {input_amount} {input_token_mint}"
+        )
     log_transaction.info(
         f"SolTrade is creating exchange for {input_amount} {input_token_mint}"
     )
