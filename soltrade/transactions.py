@@ -2,10 +2,8 @@ import asyncio
 import base64
 import json
 import os
-import pandas as pd
 
 import httpx
-from solana.rpc.core import RPCException
 from solana.rpc.types import TxOpts
 from solders import message
 from solders.signature import Signature
@@ -38,21 +36,17 @@ def market(path=None):
 
 # Returns the route to be manipulated in createTransaction()
 async def create_exchange(
-    input_amount: int, input_token_mint: str, output_token_mint
+    input_amount: int, input_token_mint: str, output_token_mint: str
 ) -> dict:
-    if config().split_between_mints and input_token_mint == config().primary_mint:
-        input_amount = input_amount / len(config().secondary_mints)
-        log_transaction.info(
-            f"SolTrade is creating exchange for {input_amount} {input_token_mint}"
-        )
+    # if config().split_between_mints and input_token_mint == config().primary_mint:
+    #     input_amount = input_amount / len(config().secondary_mints)
     log_transaction.info(
         f"SolTrade is creating exchange for {input_amount} {input_token_mint}"
     )
 
     token_decimals = config().decimals(output_token_mint)
 
-    # Finds the response and converts it into a readable array
-    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&minimizeSlippage=true&platformFeeBps=100"
+    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&minimizeSlippage=true&platformFeeBps=10"
     log_transaction.info(f"SolTrade API Link: {api_link}")
     async with httpx.AsyncClient() as client:
         response = await client.get(api_link)
@@ -66,17 +60,14 @@ async def create_transaction(quote: dict) -> dict:
 {quote}"""
     )
 
-    # Parameters used for the Jupiter POST request
     parameters = {
         "quoteResponse": quote,
         "userPublicKey": str(config().public_address),
-        "wrapAndUnwrapSol": True,
-        "computeUnitPriceMicroLamports": 20 * 14000,  # fee of roughly $.04  :shrug:
+        "computeUnitPriceMicroLamports": 20 * 14000,
         "feeAccount": "44jKKtkFEo3doi9E9aqMpDrKSpAvRSDHosNQWLFPL5Qr",
-        "dynamicSlippage": {"maxBps": config().max_slippage},
+        "dynamicSlippage": {"maxBps": int(config().max_slippage)},
     }
 
-    # Returns the JSON parsed response of Jupiter
     async with httpx.AsyncClient() as client:
         if config().jup_api == "https://api.jup.ag/swap/v6":
             response = await client.post(
@@ -89,26 +80,36 @@ async def create_transaction(quote: dict) -> dict:
 
 # Deserializes and sends the transaction from the swap information given
 def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
-    raw_txn = VersionedTransaction.from_bytes(base64.b64decode(swap_transaction))
-    signature = config().keypair.sign_message(
-        message.to_bytes_versioned(raw_txn.message)
-    )
-    signed_txn = VersionedTransaction.populate(raw_txn.message, [signature])
-
-    result = config().client.send_raw_transaction(bytes(signed_txn), opts)
-    txid = result.value
-    log_transaction.info(f"SolTrade TxID: {txid}")
-    return txid
+    try:
+        raw_txn = VersionedTransaction.from_bytes(base64.b64decode(swap_transaction))
+        log_transaction.info(f"Raw transaction: {raw_txn}")
+        signature = config().keypair.sign_message(
+            message.to_bytes_versioned(raw_txn.message)
+        )
+        log_transaction.info(f"Signature: {signature}")
+        signed_txn = VersionedTransaction.populate(raw_txn.message, [signature])
+        log_transaction.info(f"Signed transaction: {signed_txn}")
+        result = config().client.send_raw_transaction(bytes(signed_txn), opts)
+        txid = result.value
+        log_transaction.info(f"SolTrade TxID: {txid}")
+        return txid
+    except Exception as e:
+        log_transaction.error(f"Failed to send transaction: {e}")
+        raise
 
 
 def find_transaction_error(txid: Signature) -> dict:
-    json_response = (
-        config()
-        .client.get_transaction(txid, max_supported_transaction_version=0)
-        .to_json()
-    )
-    parsed_response = json.loads(json_response)["result"]["meta"]["err"]
-    return parsed_response
+    try:
+        json_response = (
+            config()
+            .client.get_transaction(txid, max_supported_transaction_version=0)
+            .to_json()
+        )
+        parsed_response = json.loads(json_response)["result"]["meta"]["err"]
+        return parsed_response
+    except Exception as e:
+        log_transaction.error(f"Failed to find transaction error: {e}")
+        return {"error": str(e)}
 
 
 def find_last_valid_block_height() -> dict:
@@ -121,7 +122,6 @@ def find_last_valid_block_height() -> dict:
     return parsed_response
 
 
-# Uses the previous functions and parameters to exchange Solana token currencies
 async def perform_swap(
     sent_amount: float,
     sent_token_mint: str,
@@ -147,24 +147,21 @@ async def perform_swap(
                     last_valid_block_height=find_last_valid_block_height(),
                 )
                 txid = send_transaction(trans["swapTransaction"], opts)
-            except Exception:
-                if RPCException:
-                    log_general.warning(
-                        f"SolTrade failed to complete transaction {i}. Retrying."
-                    )
-                    continue
-                else:
-                    raise
-            for i in range(0, 3):
+            except Exception as e:
+                log_general.warning(
+                    f"SolTrade failed to complete transaction {i}. Retrying. Error: {e}"
+                )
+                continue
+            for j in range(0, 3):
                 try:
                     await asyncio.sleep(35)
                     tx_error = find_transaction_error(txid)
                     if not tx_error:
                         is_tx_successful = True
                         break
-                except TypeError:
+                except TypeError as e:
                     log_general.warning(
-                        "SolTrade failed to verify the existence of the transaction. Retrying."
+                        f"SolTrade failed to verify the existence of the transaction. Retrying. Error: {e}"
                     )
                     continue
         else:
