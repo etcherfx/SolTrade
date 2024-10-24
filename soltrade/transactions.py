@@ -5,7 +5,7 @@ import os
 
 import httpx
 from solana.rpc.types import TxOpts
-from solders import message
+from solders.message import to_bytes_versioned
 from solders.signature import Signature
 from solders.transaction import VersionedTransaction
 
@@ -44,9 +44,9 @@ async def create_exchange(
         f"SolTrade is creating exchange for {input_amount} {input_token_mint}"
     )
 
-    token_decimals = config().decimals(output_token_mint)
+    token_decimals = config().decimals(input_token_mint)
 
-    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&minimizeSlippage=true&platformFeeBps=10"
+    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&platformFeeBps=10"
     log_transaction.info(f"SolTrade API Link: {api_link}")
     async with httpx.AsyncClient() as client:
         response = await client.get(api_link)
@@ -75,6 +75,7 @@ async def create_transaction(quote: dict) -> dict:
             )
         else:
             response = await client.post(f"{config().jup_api}/swap", json=parameters)
+        log_transaction.info(response.json())
         return response.json()
 
 
@@ -82,13 +83,8 @@ async def create_transaction(quote: dict) -> dict:
 def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
     try:
         raw_txn = VersionedTransaction.from_bytes(base64.b64decode(swap_transaction))
-        log_transaction.info(f"Raw transaction: {raw_txn}")
-        signature = config().keypair.sign_message(
-            message.to_bytes_versioned(raw_txn.message)
-        )
-        log_transaction.info(f"Signature: {signature}")
+        signature = config().keypair.sign_message(to_bytes_versioned(raw_txn.message))
         signed_txn = VersionedTransaction.populate(raw_txn.message, [signature])
-        log_transaction.info(f"Signed transaction: {signed_txn}")
         result = config().client.send_raw_transaction(bytes(signed_txn), opts)
         txid = result.value
         log_transaction.info(f"SolTrade TxID: {txid}")
@@ -99,17 +95,13 @@ def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
 
 
 def find_transaction_error(txid: Signature) -> dict:
-    try:
-        json_response = (
-            config()
-            .client.get_transaction(txid, max_supported_transaction_version=0)
-            .to_json()
-        )
-        parsed_response = json.loads(json_response)["result"]["meta"]["err"]
-        return parsed_response
-    except Exception as e:
-        log_transaction.error(f"Failed to find transaction error: {e}")
-        return {"error": str(e)}
+    json_response = (
+        config()
+        .client.get_transaction(txid, max_supported_transaction_version=0)
+        .to_json()
+    )
+    parsed_response = json.loads(json_response)["result"]["meta"]["err"]
+    return parsed_response
 
 
 def find_last_valid_block_height() -> dict:
@@ -161,7 +153,7 @@ async def perform_swap(
                         break
                 except TypeError as e:
                     log_general.warning(
-                        f"SolTrade failed to verify the existence of the transaction. Retrying. Error: {e}"
+                        f"SolTrade failed to verify the existence of the transaction. Retrying."
                     )
                     continue
         else:
