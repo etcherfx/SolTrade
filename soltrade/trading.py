@@ -31,17 +31,16 @@ initial_primary_balance = find_balance(primary_mint)
 initial_secondary_balances = [find_balance(mint) for mint in secondary_mints]
 
 
-def fetch_price(symbol):
-    url = "https://min-api.cryptocompare.com/data/price"
-    headers = {"authorization": api_key}
-    params = {"fsym": symbol, "tsyms": "USD"}
-    response = requests.get(url, headers=headers, params=params)
-    price = response.json().get("USD", 0)
-    return price
+def fetch_price(mint):
+    url = "https://api.jup.ag/price/v2"
+    params = {"ids": mint}
+    response = requests.get(url, params=params)
+    response_json = response.json()
+    return float(response_json["data"].get(mint, {}).get("price", 0))
 
 
-initial_primary_price = fetch_price(primary_mint_symbol)
-initial_secondary_prices = [fetch_price(symbol) for symbol in secondary_mint_symbols]
+initial_primary_price = fetch_price(primary_mint)
+initial_secondary_prices = [fetch_price(mint) for mint in secondary_mints]
 
 
 def fetch_candlestick(primary_mint_symbol, secondary_mint_symbol) -> dict:
@@ -116,10 +115,8 @@ def perform_analysis():
             initial_secondary_balances, initial_secondary_prices
         )
     )
-    current_total_value = (
-        current_primary_balance * fetch_price(primary_mint_symbol)
-    ) + sum(
-        current_secondary_balance * fetch_price(secondary_mint_symbol)
+    current_total_value = (current_primary_balance * fetch_price(primary_mint)) + sum(
+        current_secondary_balance * fetch_price(secondary_mint)
         for current_secondary_balance, secondary_mint_symbol in zip(
             current_secondary_balances, secondary_mint_symbols
         )
