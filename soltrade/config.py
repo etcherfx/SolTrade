@@ -1,7 +1,6 @@
 import json
 import os
 
-from dotenv import load_dotenv
 from solana.rpc.api import Client
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
@@ -11,7 +10,6 @@ from soltrade.log import log_general
 
 class Config:
     def __init__(self):
-        load_dotenv()
         self.api_key = None
         self.private_key = None
         self.rpc_https = None
@@ -30,10 +28,9 @@ class Config:
         self.load_config()
 
     def load_config(self):
-        self.api_key = os.getenv("API_KEY")
-        self.private_key = os.getenv("WALLET_PRIVATE_KEY")
-
         default_config = {
+            "api_key": "",
+            "private_key": "",
             "rpc_https": "https://api.mainnet-beta.solana.com",
             "jup_api": "https://quote-api.jup.ag/v6",
             "primary_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
