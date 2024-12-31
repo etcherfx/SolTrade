@@ -22,7 +22,6 @@ class Config:
         self.price_update_seconds = None
         self.trading_interval_minutes = None
         self.max_slippage = None  # BPS
-        self.split_between_mints = None
         self.strategy = None
         self.path = os.path.join(os.path.dirname(__file__), "..", "config.json")
         self.load_config()
@@ -40,7 +39,6 @@ class Config:
             "price_update_seconds": 60,
             "trading_interval_minutes": 1,
             "max_slippage": 50,
-            "split_between_mints": False,
             "strategy": "default",
         }
 

@@ -34,26 +34,22 @@ def market(path=None):
     return _market_instance
 
 
-# Returns the route to be manipulated in createTransaction()
 async def create_exchange(
     input_amount: int, input_token_mint: str, output_token_mint: str
 ) -> dict:
-    # if config().split_between_mints and input_token_mint == config().primary_mint:
-    #     input_amount = input_amount / len(config().secondary_mints)
     log_transaction.info(
         f"SolTrade is creating exchange for {input_amount} {input_token_mint}"
     )
 
     token_decimals = config().decimals(input_token_mint)
 
-    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}&platformFeeBps=10"
+    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}"
     log_transaction.info(f"SolTrade API Link: {api_link}")
     async with httpx.AsyncClient() as client:
         response = await client.get(api_link)
         return response.json()
 
 
-# Returns the swap_transaction to be manipulated in sendTransaction()
 async def create_transaction(quote: dict) -> dict:
     log_transaction.info(
         f"""SolTrade is creating transaction for the following quote: 
@@ -64,7 +60,6 @@ async def create_transaction(quote: dict) -> dict:
         "quoteResponse": quote,
         "userPublicKey": str(config().public_address),
         "computeUnitPriceMicroLamports": 20 * 14000,
-        "feeAccount": "44jKKtkFEo3doi9E9aqMpDrKSpAvRSDHosNQWLFPL5Qr",
         "dynamicSlippage": {"maxBps": int(config().max_slippage)},
     }
 
