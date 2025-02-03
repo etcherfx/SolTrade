@@ -31,7 +31,7 @@ class Config:
             "api_key": "",
             "private_key": "",
             "rpc_https": "https://api.mainnet-beta.solana.com",
-            "jup_api": "https://quote-api.jup.ag/v6",
+            "jup_api": "https://api.jup.ag/swap/v1/quote",
             "primary_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
             "primary_mint_symbol": "USDC",
             "secondary_mints": ["So11111111111111111111111111111111111111112"],

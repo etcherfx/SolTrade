@@ -64,12 +64,7 @@ async def create_transaction(quote: dict) -> dict:
     }
 
     async with httpx.AsyncClient() as client:
-        if config().jup_api == "https://api.jup.ag/swap/v6":
-            response = await client.post(
-                f"{config().jup_api}/transaction", json=parameters
-            )
-        else:
-            response = await client.post(f"{config().jup_api}/swap", json=parameters)
+        response = await client.post(f"{config().jup_api}/swap", json=parameters)
         log_transaction.info(response.json())
         return response.json()
 
