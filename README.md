@@ -1,79 +1,132 @@
-<div align="center">
-  <img src=https://github.com/noahtheprogrammer/soltrade/assets/81941019/aee060e2-d254-447e-b2ec-746367e06483 alt="soltrade_logo">
+<div align ="center">
+
+<img src="projectInfo/icon.png" width="180">
+
+# SolTrade
+
+<span style="font-size:18px;">A Solana trading bot with lots of features.</span>
+
+[![CodeFactor](https://www.codefactor.io/repository/github/etcherfx/soltrade/badge/main?style=for-the-badge)](https://www.codefactor.io/repository/github/etcherfx/soltrade/overview/main)
+[![License](https://img.shields.io/github/license/etcherfx/soltrade?style=for-the-badge)](https://github.com/etcherfx/soltrade/blob/main/LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/etcherfx/soltrade?style=for-the-badge)](https://github.com/etcherfx/soltrade/issues) <br>
+[![GitHub Release](https://img.shields.io/github/release/etcherfx/soltrade?include_prereleases&style=for-the-badge)](https://github.com/etcherfx/soltrade/releases/latest)
+
 </div>
 
-### Introduction
-Soltrade is a Python-based, open source trading bot that we created in order to dive deeper into the workings of the blockchain and leap headfirst into the world of technical analysis. It integrates EMA, RSI, and Bollinger Band indicators into a customizable trading interval to predict the most profitable course of action. Jupiter has been integrated into Soltrade as well, allowing for near-instantaneous transactions with minimal fees. Soltrade is fairly customizable, with more user input to come in later versions. A ten-day chart demonstation of open and close positions with Soltrade's algorithm can be viewed below.
+## Links 🔗
 
-<div align="center">
-  <img src=https://user-images.githubusercontent.com/81941019/227742349-d87b9dab-286e-47a9-a1b7-51f4e8023274.png alt="demo_chart">
-</div>
+- [Releases](https://github.com/etcherfx/SolTrade/releases)
 
-### Disclaimer
-This software was created for education purposes only and, like all trading bots, cannot predict the future.
-Please do not risk money you are not willing or cannot afford to lose. 
-The creators and contributors of Soltrade are not responsible for any losses you might incur during trading.
+## Projects Used 🛠️
 
-### Setup
-In order to use Soltrade you will need a free CryptoCompare API key and access to a wallet application such as Phantom.
-Open the installation folder and create a file titled `.env` with the following code block, replacing the placeholder values with your API key and wallet private key. Both keys are required to receive pricing data and perform trading transactions.
-```
-API_KEY=YOUR_CRYPTOCOMPARE_KEY
-WALLET_PRIVATE_KEY=YOUR_PRIVATE_KEY
-SECONDARY_MINT=SECONDARY_TOKEN_ADDRESS
-```
-In addition to these required parameters, there are some additional ones that can be used as well.
-Keep in mind that Jupiter often experiences issues when working with low slippage, so we recommend using at least a 0.5% fee or greater to minimize transaction issues. 
-| Parameter                  | Description                                               | Default   |
-|----------------------------|-----------------------------------------------------------|:---------:|
-| `PRIMARY_MINT_SYMBOL`      | ticker symbol of main token                               |   `USD`   |
-| `PRIMARY_MINT`             | token address of main currency                            | `EPjF..v` |
-| `SECONDARY_MINT_SYMBOL`    | ticker symbol of custom token                             | `UNKNOWN` |
-| `PRICE_UPDATE_SECONDS`     | second-based time interval between token price updates    |    `60`   |
-| `TRADING_INTERVALS_MINUTE` | minute-based time interval for technical analysis         |    `1`    |
-| `SLIPPAGE`                 | slippage % in BPS utilized by Jupiter during transactions |    `50`   |
+- [noahtheprogrammer's soltrade](https://github.com/noahtheprogrammer/soltrade)
 
-### Installation
-In order to install the dependencies for Soltrade, open Python and run the following command.
-This will install automatically install the required modules and their respective versions.
-```
-python -m pip install -r requirements.txt
-```
-If the Soltrade is unable to open after following the installation process, try restarting your machine, as Python occassionally requires a reboot in order to successfully import modules.
+## Features 📂
 
-Alternatively, you can install using poetry:
+- **Custom strategies**: Create your own trading strategies and use them with SolTrade. Customize parameters like `stoploss`, `trailing_stoploss`, `takeprofit`, etc to fit your needs
+- **Multiple token trading**: Instead of waiting for one token to meet trading conditions, you can analyze multiple tokens to increase trade chances, given you have a good RPC and self-hosted or paid Jupiter API.
+
+## Term Definitions 📚
+
+- **Primary Mint**: The token you want to trade with, usually a stablecoin like USDC
+- **Secondary Mint**: The token you want to trade for, like SOL or any other Solana token
+- **Trading Intervals**: The time interval between each technical analysis (whether current conditions are fit to trade), in minutes
+- **Price Update Interval**: The time interval between each price update, in seconds
+- **Max Slippage**: The maximum percentage difference between the expected price and the executed price when making a trade
+- **Strategy**: The trading strategy you want to use, like `default` or your own custom strategy
+
+## Setup 🔧
+
+- Sign up for a [CryptoCompare API key](https://www.cryptocompare.com/cryptopian/api-keys)
+- Create a new wallet on [Phantom](https://phantom.app/) or any other Solana wallet solely for SolTrade
+- Deposit however much of the primary token you want to trade with into your wallet and at least `~0.1 $SOL` to cover transaction fees
+
+## Configuration ⚙️
+
+- Make a copy of the `config.json.sample` file and rename it to `config.json`
+- Fill in / edit the following parameters in the `config.json` file or leave them default:
+  | Parameter | Description | Default |
+  |----------------------------|-----------------------------------------------------------|:---------:|
+  | `api_key` | Your CryptoCompare API key | `Null` |
+  | `private_key` | Your Solana wallet private key | `Null` |
+  | `rpc_https` | HTTPS endpoint of your RPC | `https://api.mainnet-beta.solana.co` |
+  | `jup_api` | Jupiter API endpoint | `https://api.jup.ag/swap/v1` |
+  |`primary_mint`| Token address of main currency |`EPjF..v`|
+  |`primary_mint_symbol`| Token symbol of main token |`USDC`|
+  |`secondary_mints`| Token adress of each custom token(s) seperated by `,` in a list `[]` |`[So11..2]`|
+  |`secondary_mint_symbols`| Token symbol of custom token(s) seperated by `,` in a list `[]` |`[SOL]`|
+  |`price_update_seconds`| Second-based time interval between token price updates |`60`|
+  |`trading_interval_minutes`| Minute-based time interval for technical analysis |`1`|
+  |`max_slippage`| Maximum slippage % in BPS utilized by Jupiter during transactions |`50`|
+  |`strategy`| The strategy you want to trade with |`default`|
+
+## Installation 🛠️
+
+- Set Windows PowerShell execution policy to `RemoteSigned`:
+  ```
+  Set-ExecutionPolicy RemoteSigned
+  ```
+- Install `poetry` via `pip`:
+  ```
+  pip install poetry
+  ```
+- Set poetry to create virtual environments in the project directory:
+  ```
+  poetry config virtualenvs.in-project true
+  ```
+- Go into the project root directory and nstall the dependencies:
+  ```
+  poetry install
+  ```
+- Install the poetry shell plugin:
+  ```
+  poetry self add poetry-plugin-shell
+  ```
+
+## Usage 🚀
+
+- Enter the virtual environment:
+  ```
+  poetry shell
+  ```
+- Start the bot:
+  ```
+  python main.py
+  ```
+
+## Custom Strategies 📈
+
+> [!NOTE]  
+> `{Your Strategy Name}` is just a placeholder for your strategy name. Replace it with your actual strategy name without the `{}`.
+
+- Create a new Python file in the `strategies` directory named `{Your Strategy Name}_strategy.py`
+- Create a class named `{Your Strategy Name}Strategy` (all one word with the first letter being a capital letter) that inherits from the `BaseStrategy` class
+- Create a `__init__` method that takes in the following parameters:
+  ```
+  def __init__(self, df: pd.DataFrame):
+    self.df = df
+    self.stoploss =
+    self.takeprofit =
+    self.trailing_stoploss =
+    self.trailing_stoploss_target =
+  ```
+- Create a `apply_strategy` method that is called by the bot to apply the strategy:
+  ```
+  def apply_strategy(self):
+    if config().strategy == "{Your Strategy Name}":
+      # Your strategy logic here
+  ```
+- Then, change the config `strategy` parameter to `{Your Strategy Name}`
+- Lastly, feel free to make a pull request to add your strategy to the main project
+
+## Donations 💸
+
+Similar to the original project, SolTrade does not currently include a platform fee and will remain open-source forever. However, if you would like to support the project, you can donate to the following Solana wallet address:
+
 ```
-python -m pip install poetry
-poetry install
+22gwSXc7mvp6UZwgDouhQuJ5AmHN3oxLNGULkARmT3PV
 ```
 
-### Docker
-Build the Soltrade Docker image using the following command:
-```
-docker build -t soltrade_bot .
-```
-Once the image is built, you can run the Soltrade bot container using:
-```
-docker run -d --name soltrade_bot \
-    -e API_KEY=<cryptocompare_api_key> \
-    -e WALLET_PRIVATE_KEY=<wallet_private_key> \
-    -e SECOND_MINT=<token_address> \
-    soltrade_bot
-```
-Replace `<cryptocompare_api_key>`, `<wallet_private_key>`, and `<token_address>` with your actual values before running the command.
+## Disclaimer ⚠️
 
-### Usage
-Before starting Soltrade, make sure you have deposited at least 1 of the selected primary $TOKEN in your connected wallet, along with ~0.1 $SOL to cover any additional transaction fees.
-After the installation has been completed, begin Soltrade by running `soltrade.py` on your desktop or using Python commands.
-Soltrade will automatically display indicator information as determined by the value of the `PRICE_UPDATE_SECONDS` environment variable.
-Market positions, as well as stoploss and takeprofit, are automatically saved and can be viewed in the `position.json` file generated at startup.
-
-### Contributions
-if you have any interest in contributing, fork the repository and submit a pull request to have your improvements merged into the main repository. When opening an issue or feature request, be sure to provide a clear title and description of the issue you are experiencing or the feature you would like to suggest. Once submitted, we will review the issue and respond as soon as possible.
-
-### Donations
-Soltrade does not currently include a platform fee and will remain open-source forever.
-If you're feeling a bit more generous however, please donate to my $SOL address below.
-```
-6XeQkUDZdsGsKBrhGWRuweHu4nbcv23t8r8vPt5xEsMv
-```
+This project is a fork of [noahtheprogrammer's soltrade](https://github.com/noahtheprogrammer/soltrade) and is not affiliated with the original project in any way. I am not responsible for any losses you may incur while using this software. Use at your own risk.
