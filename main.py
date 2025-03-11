@@ -11,7 +11,7 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.key_binding import KeyBindings
 import shutil
-import os
+import subprocess       
 
 config()
 
@@ -93,7 +93,7 @@ def get_layout():
 
 
 def start_trading_handler():
-    os.system("cls" if os.name == "nt" else "clear")
+    subprocess.run("cls" if os.name == "nt" else "clear", shell=True)
     can_run = check_json_state()
 
     try:

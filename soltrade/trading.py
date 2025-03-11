@@ -1,5 +1,6 @@
 import asyncio
 import os
+import subprocess
 import pandas as pd
 import requests
 from tabulate import tabulate
@@ -65,7 +66,7 @@ def format_as_money(value):
 
 
 def perform_analysis():
-    os.system("cls" if os.name == "nt" else "clear")
+    subprocess.run("cls" if os.name == "nt" else "clear", shell=True)
     log_general.debug("Soltrade is analyzing the market; no trade has been executed.")
     data_frames = []
 
