@@ -33,7 +33,7 @@ initial_secondary_balances = [find_balance(mint) for mint in secondary_mints]
 
 
 def fetch_price(mint):
-    url = "https://api.jup.ag/price/v2"
+    url = "https://lite-api.jup.ag/price/v2"
     params = {"ids": mint}
     response = requests.get(url, params=params)
     response_json = response.json()

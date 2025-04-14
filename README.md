@@ -49,8 +49,8 @@
   |----------------------------|-----------------------------------------------------------|:---------:|
   | `api_key` | Your CryptoCompare API key | `Null` |
   | `private_key` | Your Solana wallet private key | `Null` |
-  | `rpc_https` | HTTPS endpoint of your RPC | `https://api.mainnet-beta.solana.co` |
-  | `jup_api` | Jupiter API endpoint | `https://api.jup.ag/swap/v1` |
+  | `rpc_https` | HTTPS endpoint of your RPC | `https://api.mainnet-beta.solana.com` |
+  | `jup_api` | Jupiter API endpoint | `https://lite-api.jup.ag/swap/v1` |
   |`primary_mint`| Token address of main currency |`EPjF..v`|
   |`primary_mint_symbol`| Token symbol of main token |`USDC`|
   |`secondary_mints`| Token adress of each custom token(s) seperated by `,` in a list `[]` |`[So11..2]`|
