@@ -60,8 +60,10 @@
   |`max_slippage`| Maximum slippage % in BPS utilized by Jupiter during transactions |`50`|
   |`strategy`| The strategy you want to trade with |`default`|
 
-## Installation 🛠️
+## Installation (Windows) 🪟
 
+- Install Microsoft Visual C++ Build Tools from [here](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+- Install TA-Lib from [here](https://ta-lib.org/install/)
 - Set Windows PowerShell execution policy to `RemoteSigned`:
   ```
   Set-ExecutionPolicy RemoteSigned
@@ -78,20 +80,12 @@
   ```
   poetry install
   ```
-- Install the poetry shell plugin:
-  ```
-  poetry self add poetry-plugin-shell
-  ```
 
 ## Usage 🚀
 
-- Enter the virtual environment:
-  ```
-  poetry shell
-  ```
 - Start the bot:
   ```
-  python main.py
+  poetry run python main.py
   ```
 
 ## Custom Strategies 📈

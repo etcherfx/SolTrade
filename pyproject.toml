@@ -7,19 +7,19 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-apscheduler = "3.10.4"
+APScheduler = "3.11.0"
 base58 = "2.1.1"
 httpx = "0.28.1"
-pandas = "2.2.3"
-requests = "2.32.3"
-setuptools = "75.8.0"
-solana = "0.36.3"
-matplotlib = "3.10.0"
-solders = "0.23.0"
+pandas = "2.3.0"
+requests = "2.32.4"
+setuptools = "80.9.0"
+solana = "0.36.7"
+matplotlib = "3.10.3"
+solders = "0.26.0"
 tabulate = "0.9.0"
-prompt_toolkit = "3.0.48"
+prompt_toolkit = "3.0.51"
 backtrader = "1.9.78.123"
-pandas-ta = { git = "https://github.com/twopirllc/pandas-ta.git", branch = "development" }
+TA-Lib = "0.6.4"
 
 [build-system]
 requires = ["poetry-core"]
