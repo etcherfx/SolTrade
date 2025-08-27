@@ -1,6 +1,6 @@
 [project]
 name = "soltrade"
-version = "0.1.0"
+version = "1.0.0"
 description = "A Solana trading bot with lots of features."
 readme = "README.md"
 requires-python = ">=3.13"

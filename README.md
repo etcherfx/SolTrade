@@ -1,32 +1,43 @@
-<div align ="center">
+<h1 align="center">
+  <img src="projectInfo/banner.png" alt="SolTrade Banner" width="850">
+</h1>
 
-<img src="projectInfo/icon.png" width="180">
-
-# SolTrade
-
-<span style="font-size:18px;">A Solana trading bot with lots of features.</span>
+<div align="center">
 
 [![CodeFactor](https://www.codefactor.io/repository/github/etcherfx/soltrade/badge/main?style=for-the-badge)](https://www.codefactor.io/repository/github/etcherfx/soltrade/overview/main)
 [![License](https://img.shields.io/github/license/etcherfx/soltrade?style=for-the-badge)](https://github.com/etcherfx/soltrade/blob/main/LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/etcherfx/soltrade?style=for-the-badge)](https://github.com/etcherfx/soltrade/issues) <br>
+[![GitHub issues](https://img.shields.io/github/issues/etcherfx/soltrade?style=for-the-badge)](https://github.com/etcherfx/soltrade/issues)
 [![GitHub Release](https://img.shields.io/github/release/etcherfx/soltrade?include_prereleases&style=for-the-badge)](https://github.com/etcherfx/soltrade/releases/latest)
+
+**A Solana trading bot with lots of features.**
+
+Hard fork of noahtheprogrammer's [soltrade](https://github.com/noahtheprogrammer/soltrade)
 
 </div>
 
-## Links 🔗
+## 📖 Table of Contents
+
+- [📖 Table of Contents](#-table-of-contents)
+- [🔗 Links](#-links)
+- [📂 Features](#-features)
+- [📚 Term Definitions](#-term-definitions)
+- [🔧 Prerequisites](#-prerequisites)
+- [⚙️ Configuration](#️-configuration)
+- [🛠️ Installation](#️-installation)
+- [📈 Custom Strategies](#-custom-strategies)
+- [💸 Donations](#-donations)
+- [⚠️ Disclaimer](#️-disclaimer)
+
+## 🔗 Links 
 
 - [Releases](https://github.com/etcherfx/SolTrade/releases)
 
-## Projects Used 🛠️
-
-- [noahtheprogrammer's soltrade](https://github.com/noahtheprogrammer/soltrade)
-
-## Features 📂
+## 📂 Features 
 
 - **Custom strategies**: Create your own trading strategies and use them with SolTrade. Customize parameters like `stoploss`, `trailing_stoploss`, `takeprofit`, etc to fit your needs
 - **Multiple token trading**: Instead of waiting for one token to meet trading conditions, you can analyze multiple tokens to increase trade chances, given you have a good RPC and self-hosted or paid Jupiter API.
 
-## Term Definitions 📚
+## 📚 Term Definitions
 
 - **Primary Mint**: The token you want to trade with, usually a stablecoin like USDC
 - **Secondary Mint**: The token you want to trade for, like SOL or any other Solana token
@@ -35,60 +46,50 @@
 - **Max Slippage**: The maximum percentage difference between the expected price and the executed price when making a trade
 - **Strategy**: The trading strategy you want to use, like `default` or your own custom strategy
 
-## Setup 🔧
+## 🔧 Prerequisites 
 
 - Sign up for a [CryptoCompare API key](https://www.cryptocompare.com/cryptopian/api-keys)
 - Create a new wallet on [Phantom](https://phantom.app/) or any other Solana wallet solely for SolTrade
 - Deposit however much of the primary token you want to trade with into your wallet and at least `~0.1 $SOL` to cover transaction fees
 
-## Configuration ⚙️
+## ⚙️ Configuration 
 
 - Make a copy of the `config.json.sample` file and rename it to `config.json`
 - Fill in / edit the following parameters in the `config.json` file or leave them default:
-  | Parameter | Description | Default |
-  |----------------------------|-----------------------------------------------------------|:---------:|
-  | `api_key` | Your CryptoCompare API key | `Null` |
-  | `private_key` | Your Solana wallet private key | `Null` |
-  | `rpc_https` | HTTPS endpoint of your RPC | `https://api.mainnet-beta.solana.com` |
-  | `jup_api` | Jupiter API endpoint | `https://lite-api.jup.ag/swap/v1` |
-  |`primary_mint`| Token address of main currency |`EPjF..v`|
-  |`primary_mint_symbol`| Token symbol of main token |`USDC`|
-  |`secondary_mints`| Token adress of each custom token(s) seperated by `,` in a list `[]` |`[So11..2]`|
-  |`secondary_mint_symbols`| Token symbol of custom token(s) seperated by `,` in a list `[]` |`[SOL]`|
-  |`price_update_seconds`| Second-based time interval between token price updates |`60`|
-  |`trading_interval_minutes`| Minute-based time interval for technical analysis |`1`|
-  |`max_slippage`| Maximum slippage % in BPS utilized by Jupiter during transactions |`50`|
-  |`strategy`| The strategy you want to trade with |`default`|
+  | Parameter                  | Description                                                          |                Default                |
+  | -------------------------- | -------------------------------------------------------------------- | :-----------------------------------: |
+  | `api_key`                  | Your CryptoCompare API key                                           |                `Null`                 |
+  | `private_key`              | Your Solana wallet private key                                       |                `Null`                 |
+  | `rpc_https`                | HTTPS endpoint of your RPC                                           | `https://api.mainnet-beta.solana.com` |
+  | `jup_api`                  | Jupiter API endpoint                                                 |   `https://lite-api.jup.ag/swap/v1`   |
+  | `primary_mint`             | Token address of main currency                                       |               `EPjF..v`               |
+  | `primary_mint_symbol`      | Token symbol of main token                                           |                `USDC`                 |
+  | `secondary_mints`          | Token adress of each custom token(s) seperated by `,` in a list `[]` |              `[So11..2]`              |
+  | `secondary_mint_symbols`   | Token symbol of custom token(s) seperated by `,` in a list `[]`      |                `[SOL]`                |
+  | `price_update_seconds`     | Second-based time interval between token price updates               |                 `60`                  |
+  | `trading_interval_minutes` | Minute-based time interval for technical analysis                    |                  `1`                  |
+  | `max_slippage`             | Maximum slippage % in BPS utilized by Jupiter during transactions    |                 `50`                  |
+  | `strategy`                 | The strategy you want to trade with                                  |               `default`               |
 
-## Installation (Windows) 🪟
+## 🛠️ Installation
 
 - Install Microsoft Visual C++ Build Tools from [here](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 - Install TA-Lib from [here](https://ta-lib.org/install/)
-- Set Windows PowerShell execution policy to `RemoteSigned`:
+- Install UV:
+  - Windows:
+    ```
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ```
+  - Linux / macOS:
+    ```
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+- Navigate over to the project root directory and run `main.py`:
   ```
-  Set-ExecutionPolicy RemoteSigned
-  ```
-- Install `poetry` via `pip`:
-  ```
-  pip install poetry
-  ```
-- Set poetry to create virtual environments in the project directory:
-  ```
-  poetry config virtualenvs.in-project true
-  ```
-- Go into the project root directory and nstall the dependencies:
-  ```
-  poetry install
+  uv run main.py
   ```
 
-## Usage 🚀
-
-- Start the bot:
-  ```
-  poetry run python main.py
-  ```
-
-## Custom Strategies 📈
+## 📈 Custom Strategies 
 
 > [!NOTE]  
 > `{Your Strategy Name}` is just a placeholder for your strategy name. Replace it with your actual strategy name without the `{}`.
@@ -113,7 +114,7 @@
 - Then, change the config `strategy` parameter to `{Your Strategy Name}`
 - Lastly, feel free to make a pull request to add your strategy to the main project
 
-## Donations 💸
+## 💸 Donations
 
 Similar to the original project, SolTrade does not currently include a platform fee and will remain open-source forever. However, if you would like to support the project, you can donate to the following Solana wallet address:
 
@@ -121,6 +122,6 @@ Similar to the original project, SolTrade does not currently include a platform 
 22gwSXc7mvp6UZwgDouhQuJ5AmHN3oxLNGULkARmT3PV
 ```
 
-## Disclaimer ⚠️
+## ⚠️ Disclaimer
 
-This project is a fork of [noahtheprogrammer's soltrade](https://github.com/noahtheprogrammer/soltrade) and is not affiliated with the original project in any way. I am not responsible for any losses you may incur while using this software. Use at your own risk.
+I am not responsible for any losses you may incur while using this software. Use at your own risk.

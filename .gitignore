@@ -13,3 +13,6 @@ wheels/
 config.json
 data/
 logs/
+
+# Project files
+*.psd
