@@ -1,26 +1,26 @@
-[tool.poetry]
-name = "SolTrade"
+[project]
+name = "soltrade"
 version = "0.1.0"
 description = "A Solana trading bot with lots of features."
-authors = ["Etcher <96310503+etcherfx@users.noreply.github.com>"]
 readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "apscheduler==3.11.0",
+    "backtrader==1.9.78.123",
+    "base58==2.1.1",
+    "httpx==0.28.1",
+    "matplotlib==3.10.3",
+    "pandas==2.3.0",
+    "prompt-toolkit==3.0.51",
+    "requests==2.32.4",
+    "setuptools==80.9.0",
+    "solana==0.36.7",
+    "solders==0.26.0",
+    "ta-lib==0.6.4",
+    "tabulate==0.9.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-APScheduler = "3.11.0"
-base58 = "2.1.1"
-httpx = "0.28.1"
-pandas = "2.3.0"
-requests = "2.32.4"
-setuptools = "80.9.0"
-solana = "0.36.7"
-matplotlib = "3.10.3"
-solders = "0.26.0"
-tabulate = "0.9.0"
-prompt_toolkit = "3.0.51"
-backtrader = "1.9.78.123"
-TA-Lib = "0.6.4"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[dependency-groups]
+dev = [
+    "ruff>=0.12.10",
+]
