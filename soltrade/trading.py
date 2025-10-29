@@ -32,19 +32,38 @@ initial_primary_balance = find_balance(primary_mint)
 initial_secondary_balances = [find_balance(mint) for mint in secondary_mints]
 
 
-def fetch_price(mint):
-    url = "https://lite-api.jup.ag/price/v2"
+def fetch_price(mint: str) -> float:
+    """Fetch token price from Jupiter Price API v3 with error handling."""
+    url = "https://lite-api.jup.ag/price/v3"
     params = {"ids": mint}
-    response = requests.get(url, params=params)
-    response_json = response.json()
-    return float(response_json["data"].get(mint, {}).get("price", 0))
+    
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        response_json = response.json()
+        
+        mint_data = response_json.get(mint, {})
+        price = float(mint_data.get("usdPrice", 0))
+        if price == 0:
+            log_general.warning(f"Price for {mint} is 0 or not available")
+        return price
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            log_general.error("401 Unauthorized: Endpoint requires Pro plan, falling back to lite-api")
+        else:
+            log_general.error(f"HTTP error fetching price for {mint}: {e}")
+        return 0.0
+    except Exception as e:
+        log_general.error(f"Failed to fetch price for {mint}: {e}")
+        return 0.0
 
 
 initial_primary_price = fetch_price(primary_mint)
 initial_secondary_prices = [fetch_price(mint) for mint in secondary_mints]
 
 
-def fetch_candlestick(primary_mint_symbol, secondary_mint_symbol) -> dict:
+def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> dict:
+    """Fetch candlestick data from CryptoCompare API."""
     url = "https://min-api.cryptocompare.com/data/v2/histominute"
     headers = {"authorization": api_key}
     params = {
@@ -53,12 +72,17 @@ def fetch_candlestick(primary_mint_symbol, secondary_mint_symbol) -> dict:
         "limit": 50,
         "aggregate": trading_interval_minutes,
     }
-    response = requests.get(url, headers=headers, params=params)
-    response_json = response.json()
-    if response_json.get("Response") == "Error":
-        log_general.error(response_json.get("Message"))
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response.raise_for_status()
+        response_json = response.json()
+        if response_json.get("Response") == "Error":
+            log_general.error(response_json.get("Message"))
+            exit()
+        return response_json
+    except Exception as e:
+        log_general.error(f"Failed to fetch candlestick data: {e}")
         exit()
-    return response_json
 
 
 def format_as_money(value):
@@ -118,8 +142,8 @@ def perform_analysis():
     )
     current_total_value = (current_primary_balance * fetch_price(primary_mint)) + sum(
         current_secondary_balance * fetch_price(secondary_mint)
-        for current_secondary_balance, secondary_mint_symbol in zip(
-            current_secondary_balances, secondary_mint_symbols
+        for current_secondary_balance, secondary_mint in zip(
+            current_secondary_balances, secondary_mints
         )
     )
     total_profit = current_total_value - initial_total_value

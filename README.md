@@ -35,7 +35,7 @@ Hard fork of noahtheprogrammer's [soltrade](https://github.com/noahtheprogrammer
 ## 📂 Features 
 
 - **Custom strategies**: Create your own trading strategies and use them with SolTrade. Customize parameters like `stoploss`, `trailing_stoploss`, `takeprofit`, etc to fit your needs
-- **Multiple token trading**: Instead of waiting for one token to meet trading conditions, you can analyze multiple tokens to increase trade chances, given you have a good RPC and self-hosted or paid Jupiter API.
+- **Multiple token trading**: Instead of waiting for one token to meet trading conditions, you can analyze multiple tokens to increase trade chances
 
 ## 📚 Term Definitions
 
@@ -49,8 +49,12 @@ Hard fork of noahtheprogrammer's [soltrade](https://github.com/noahtheprogrammer
 ## 🔧 Prerequisites 
 
 - Sign up for a [CryptoCompare API key](https://www.cryptocompare.com/cryptopian/api-keys)
+- Sign up for a free [Jupiter API key](https://portal.jup.ag/) (required for Ultra Swap API only)
 - Create a new wallet on [Phantom](https://phantom.app/) or any other Solana wallet solely for SolTrade
 - Deposit however much of the primary token you want to trade with into your wallet and at least `~0.1 $SOL` to cover transaction fees
+
+> [!IMPORTANT]  
+> **Jupiter API Migration**: This project uses Jupiter Ultra Swap API (`api.jup.ag/ultra/v1`) which requires a free API key. Price data is fetched from the free Price API v3 endpoint (`lite-api.jup.ag/price/v3`) which does not require an API key.
 
 ## ⚙️ Configuration 
 
@@ -59,16 +63,17 @@ Hard fork of noahtheprogrammer's [soltrade](https://github.com/noahtheprogrammer
   | Parameter                  | Description                                                          |                Default                |
   | -------------------------- | -------------------------------------------------------------------- | :-----------------------------------: |
   | `api_key`                  | Your CryptoCompare API key                                           |                `Null`                 |
+  | `jupiter_api_key`          | Your Jupiter API key from portal.jup.ag                              |                `Null`                 |
   | `private_key`              | Your Solana wallet private key                                       |                `Null`                 |
-  | `rpc_https`                | HTTPS endpoint of your RPC                                           | `https://api.mainnet-beta.solana.com` |
-  | `jup_api`                  | Jupiter API endpoint                                                 |   `https://lite-api.jup.ag/swap/v1`   |
+  | `rpc_https`                | HTTPS endpoint of your RPC (for balance checks & token info)         | `https://api.mainnet-beta.solana.com` |
+  | `jup_api`                  | Jupiter Ultra API endpoint                                           |     `https://api.jup.ag/ultra/v1`     |
   | `primary_mint`             | Token address of main currency                                       |               `EPjF..v`               |
   | `primary_mint_symbol`      | Token symbol of main token                                           |                `USDC`                 |
   | `secondary_mints`          | Token adress of each custom token(s) seperated by `,` in a list `[]` |              `[So11..2]`              |
   | `secondary_mint_symbols`   | Token symbol of custom token(s) seperated by `,` in a list `[]`      |                `[SOL]`                |
   | `price_update_seconds`     | Second-based time interval between token price updates               |                 `60`                  |
   | `trading_interval_minutes` | Minute-based time interval for technical analysis                    |                  `1`                  |
-  | `max_slippage`             | Maximum slippage % in BPS utilized by Jupiter during transactions    |                 `50`                  |
+  | `max_slippage`             | Maximum slippage % in BPS                                            |                 `50`                  |
   | `strategy`                 | The strategy you want to trade with                                  |               `default`               |
 
 ## 🛠️ Installation

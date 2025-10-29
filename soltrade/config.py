@@ -11,6 +11,7 @@ from soltrade.log import log_general
 class Config:
     def __init__(self):
         self.api_key = None
+        self.jupiter_api_key = None
         self.private_key = None
         self.rpc_https = None
         self.jup_api = None
@@ -21,17 +22,20 @@ class Config:
         self.secondary_mint_symbols = []
         self.price_update_seconds = None
         self.trading_interval_minutes = None
-        self.max_slippage = None  # BPS
+        self.max_slippage = None
         self.strategy = None
         self.path = os.path.join(os.path.dirname(__file__), "..", "config.json")
+        self._client = None
+        self._decimals_cache = {}
         self.load_config()
 
     def load_config(self):
         default_config = {
             "api_key": "",
+            "jupiter_api_key": "",
             "private_key": "",
             "rpc_https": "https://api.mainnet-beta.solana.com",
-            "jup_api": "https://lite-api.jup.ag/swap/v1",
+            "jup_api": "https://api.jup.ag/ultra/v1",
             "primary_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
             "primary_mint_symbol": "USDC",
             "secondary_mints": ["So11111111111111111111111111111111111111112"],
@@ -51,8 +55,31 @@ class Config:
                         setattr(self, key, default_value)
             except json.JSONDecodeError as e:
                 print(f"Error loading config: {e}")
+        
+        self._validate_config()
+    
+    def _validate_config(self):
+        """Validate that critical configuration fields are properly set."""
+        if not self.private_key or self.private_key == "":
+            log_general.warning("Private key is not set in config.json. Bot cannot trade.")
+        
+        if not self.api_key or self.api_key == "":
+            log_general.warning("CryptoCompare API key is not set in config.json. Price data unavailable.")
+        
+        if not self.jupiter_api_key or self.jupiter_api_key == "":
+            log_general.warning("Jupiter API key is not set in config.json. Required for api.jup.ag endpoint.")
+        
+        if not self.rpc_https:
+            log_general.error("RPC endpoint is not set in config.json.")
+            
+        if not self.jup_api:
+            log_general.error("Jupiter API endpoint is not set in config.json.")
 
     def decimals(self, mint_address: str) -> int:
+        """Get token decimals with caching to avoid repeated RPC calls."""
+        if mint_address in self._decimals_cache:
+            return self._decimals_cache[mint_address]
+        
         response = self.client.get_account_info_json_parsed(
             Pubkey.from_string(mint_address)
         ).to_json()
@@ -60,6 +87,8 @@ class Config:
         value = (
             10 ** json_response["result"]["value"]["data"]["parsed"]["info"]["decimals"]
         )
+        
+        self._decimals_cache[mint_address] = value
         return value
 
     @property
@@ -80,14 +109,18 @@ class Config:
 
     @property
     def client(self) -> Client:
-        rpc_url = self.rpc_https
-        return Client(rpc_url)
+        """Cached RPC client to avoid creating new connections."""
+        if self._client is None:
+            self._client = Client(self.rpc_https)
+        return self._client
 
 
 _config_instance = None
 
 
 def config() -> Config:
+    """Singleton pattern to ensure only one Config instance exists."""
     global _config_instance
-    _config_instance = Config()
+    if _config_instance is None:
+        _config_instance = Config()
     return _config_instance

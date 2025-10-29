@@ -1,12 +1,8 @@
-import asyncio
 import base64
-import json
 import os
 
 import httpx
-from solana.rpc.types import TxOpts
 from solders.message import to_bytes_versioned
-from solders.signature import Signature
 from solders.transaction import VersionedTransaction
 
 from soltrade.config import config
@@ -34,74 +30,99 @@ def market(path=None):
     return _market_instance
 
 
-async def create_exchange(
+async def create_order(
     input_amount: int, input_token_mint: str, output_token_mint: str
 ) -> dict:
+    """
+    Creates a swap order using Jupiter Ultra API.
+    This replaces the legacy create_exchange and create_transaction functions.
+    """
     log_transaction.info(
-        f"SolTrade is creating exchange for {input_amount} {input_token_mint}"
+        f"SolTrade is creating order for {input_amount} {input_token_mint}"
     )
 
     token_decimals = config().decimals(input_token_mint)
-
-    api_link = f"{config().jup_api}/quote?inputMint={input_token_mint}&outputMint={output_token_mint}&amount={int(input_amount * token_decimals)}"
-    log_transaction.info(f"SolTrade API Link: {api_link}")
-    async with httpx.AsyncClient() as client:
-        response = await client.get(api_link)
-        return response.json()
-
-
-async def create_transaction(quote: dict) -> dict:
-    log_transaction.info(
-        f"""SolTrade is creating transaction for the following quote: 
-{quote}"""
-    )
-
-    parameters = {
-        "quoteResponse": quote,
-        "userPublicKey": str(config().public_address),
-        "computeUnitPriceMicroLamports": 20 * 14000,
-        "dynamicSlippage": {"maxBps": int(config().max_slippage)},
+    
+    params = {
+        "inputMint": input_token_mint,
+        "outputMint": output_token_mint,
+        "amount": int(input_amount * token_decimals),
+        "taker": str(config().public_address),
+        "slippageBps": int(config().max_slippage or 50),
     }
+    
+    headers = {"Content-Type": "application/json"}
+    if config().jupiter_api_key:
+        headers["x-api-key"] = config().jupiter_api_key
+    
+    api_link = f"{config().jup_api}/order"
+    log_transaction.info(f"SolTrade API Link: {api_link}")
+    log_transaction.info(f"Parameters: {params}")
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(api_link, params=params, headers=headers)
+        response.raise_for_status()
+        result = response.json()
+        log_transaction.info(f"Order response: {result}")
+        return result
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(f"{config().jup_api}/swap", json=parameters)
-        log_transaction.info(response.json())
-        return response.json()
 
-
-# Deserializes and sends the transaction from the swap information given
-def send_transaction(swap_transaction: dict, opts: TxOpts) -> Signature:
+async def execute_order(order_response: dict) -> dict:
+    """
+    Signs and executes a swap order using Jupiter Ultra API.
+    This replaces the legacy send_transaction function.
+    """
     try:
-        raw_txn = VersionedTransaction.from_bytes(base64.b64decode(swap_transaction))
+        if "errorCode" in order_response:
+            error_msg = order_response.get("errorMessage", "Unknown error")
+            log_transaction.error(f"Order failed: {error_msg}")
+            raise Exception(f"Order error: {error_msg}")
+        
+        transaction_b64 = order_response.get("transaction")
+        if not transaction_b64:
+            log_transaction.error("No transaction returned in order response")
+            raise Exception("No transaction in order response")
+        
+        request_id = order_response["requestId"]
+        
+        # Deserialize and sign the transaction
+        raw_txn = VersionedTransaction.from_bytes(base64.b64decode(transaction_b64))
         signature = config().keypair.sign_message(to_bytes_versioned(raw_txn.message))
         signed_txn = VersionedTransaction.populate(raw_txn.message, [signature])
-        result = config().client.send_raw_transaction(bytes(signed_txn), opts)
-        txid = result.value
-        log_transaction.info(f"SolTrade TxID: {txid}")
-        return txid
+        
+        # Convert signed transaction back to base64
+        signed_txn_b64 = base64.b64encode(bytes(signed_txn)).decode("utf-8")
+        
+        log_transaction.info(f"SolTrade is executing order with requestId: {request_id}")
+        
+        # Prepare headers with Jupiter API key
+        headers = {"Content-Type": "application/json"}
+        if config().jupiter_api_key:
+            headers["x-api-key"] = config().jupiter_api_key
+        
+        # Execute the transaction via Ultra API
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            execute_response = await client.post(
+                f"{config().jup_api}/execute",
+                json={
+                    "signedTransaction": signed_txn_b64,
+                    "requestId": request_id,
+                },
+                headers=headers
+            )
+            execute_response.raise_for_status()
+            result = execute_response.json()
+            
+            if result.get("status") == "Success":
+                log_transaction.info(f"SolTrade TxID: {result.get('signature')}")
+            else:
+                log_transaction.error(f"Transaction failed: {result.get('error')}")
+            
+            return result
+            
     except Exception as e:
-        log_transaction.error(f"Failed to send transaction: {e}")
+        log_transaction.error(f"Failed to execute transaction: {e}")
         raise
-
-
-def find_transaction_error(txid: Signature) -> dict:
-    json_response = (
-        config()
-        .client.get_transaction(txid, max_supported_transaction_version=0)
-        .to_json()
-    )
-    parsed_response = json.loads(json_response)["result"]["meta"]["err"]
-    return parsed_response
-
-
-def find_last_valid_block_height() -> dict:
-    json_response = (
-        config().client.get_latest_blockhash(commitment="confirmed").to_json()
-    )
-    parsed_response = json.loads(json_response)["result"]["value"][
-        "lastValidBlockHeight"
-    ]
-    return parsed_response
 
 
 async def perform_swap(
@@ -113,50 +134,48 @@ async def perform_swap(
 ):
     log_general.info("SolTrade is taking a market position.")
 
-    quote = trans = opts = txid = tx_error = None
+    order = execute_result = None
     is_tx_successful = False
 
     for i in range(0, 3):
         if not is_tx_successful:
             try:
-                quote = await create_exchange(
-                    sent_amount, sent_token_mint, output_token_mint
+                order = await create_order(
+                    int(sent_amount), sent_token_mint, output_token_mint
                 )
-                trans = await create_transaction(quote)
-                opts = TxOpts(
-                    skip_preflight=False,
-                    preflight_commitment="confirmed",
-                    last_valid_block_height=find_last_valid_block_height(),
-                )
-                txid = send_transaction(trans["swapTransaction"], opts)
+                
+                execute_result = await execute_order(order)
+                
+                if execute_result.get("status") == "Success":
+                    is_tx_successful = True
+                    break
+                else:
+                    log_general.warning(
+                        f"SolTrade failed to complete transaction {i}. Error: {execute_result.get('error')}. Retrying."
+                    )
             except Exception as e:
                 log_general.warning(
                     f"SolTrade failed to complete transaction {i}. Retrying. Error: {e}"
                 )
                 continue
-            for j in range(0, 3):
-                try:
-                    await asyncio.sleep(35)
-                    tx_error = find_transaction_error(txid)
-                    if not tx_error:
-                        is_tx_successful = True
-                        break
-                except TypeError as e:
-                    log_general.warning(
-                        f"SolTrade failed to verify the existence of the transaction. Retrying."
-                    )
-                    continue
-        else:
-            break
 
-    if tx_error or not is_tx_successful:
+    if not is_tx_successful:
         log_general.error(
-            "SolTrade failed to complete the transaction due to slippage issues with Jupiter."
+            "SolTrade failed to complete the transaction after 3 attempts."
         )
         return False
 
+    # Calculate the actual amounts from the execution result
     decimals = config().decimals(output_token_mint)
-    bought_amount = int(quote["outAmount"]) / decimals
+    
+    output_amount_str = "0"
+    if execute_result and execute_result.get("totalOutputAmount"):
+        output_amount_str = execute_result.get("totalOutputAmount")
+    elif order and order.get("outAmount"):
+        output_amount_str = order.get("outAmount")
+    
+    bought_amount = int(output_amount_str) / decimals
+    
     log_transaction.info(
         f"Sold {sent_amount} {sent_token_symbol} for {bought_amount:.2f} {output_token_symbol}"
     )
