@@ -31,11 +31,18 @@ def market(path=None):
 
 
 async def create_order(
-    input_amount: int, input_token_mint: str, output_token_mint: str
+    input_amount: float, input_token_mint: str, output_token_mint: str
 ) -> dict:
     """
     Creates a swap order using Jupiter Ultra API.
-    This replaces the legacy create_exchange and create_transaction functions.
+    
+    Args:
+        input_amount: The amount of input token to swap (in token units, not lamports)
+        input_token_mint: The mint address of the input token
+        output_token_mint: The mint address of the output token
+    
+    Returns:
+        Dictionary containing the order response from Jupiter API
     """
     log_transaction.info(
         f"SolTrade is creating order for {input_amount} {input_token_mint}"
@@ -43,10 +50,13 @@ async def create_order(
 
     token_decimals = config().decimals(input_token_mint)
     
+    # Convert token amount to smallest unit (lamports for SOL, etc.)
+    amount_in_smallest_unit = int(input_amount * token_decimals)
+    
     params = {
         "inputMint": input_token_mint,
         "outputMint": output_token_mint,
-        "amount": int(input_amount * token_decimals),
+        "amount": amount_in_smallest_unit,
         "taker": str(config().public_address),
         "slippageBps": int(config().max_slippage or 50),
     }
@@ -141,7 +151,7 @@ async def perform_swap(
         if not is_tx_successful:
             try:
                 order = await create_order(
-                    int(sent_amount), sent_token_mint, output_token_mint
+                    sent_amount, sent_token_mint, output_token_mint
                 )
                 
                 execute_result = await execute_order(order)
