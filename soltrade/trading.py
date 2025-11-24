@@ -1,9 +1,13 @@
 import asyncio
 import os
-import subprocess
 import pandas as pd
 import requests
-from tabulate import tabulate
+import time
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.live import Live
+from rich import box
 from apscheduler.schedulers.background import BlockingScheduler
 
 from soltrade.config import config
@@ -61,6 +65,11 @@ def fetch_price(mint: str) -> float:
 initial_primary_price = fetch_price(primary_mint)
 initial_secondary_prices = [fetch_price(mint) for mint in secondary_mints]
 
+# Track first run to avoid clearing initial startup messages
+_first_run = True
+
+console = Console()
+
 
 def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> dict:
     """Fetch candlestick data from CryptoCompare API."""
@@ -90,7 +99,14 @@ def format_as_money(value):
 
 
 def perform_analysis():
-    subprocess.run("cls" if os.name == "nt" else "clear", shell=True)
+    global _first_run
+    
+    # Clear screen on subsequent runs, skip on first to preserve startup messages
+    if not _first_run:
+        os.system('cls' if os.name == 'nt' else 'clear')
+    else:
+        _first_run = False
+        
     log_general.debug("Soltrade is analyzing the market; no trade has been executed.")
     data_frames = []
 
@@ -132,6 +148,12 @@ def perform_analysis():
     combined_df = pd.concat(data_frames, axis=0)
     combined_df.drop_duplicates(subset=["time", "mint"], keep="last", inplace=True)
 
+    console.print(Panel.fit(
+        "🔍 [bold yellow]Analyzing Market Data...[/bold yellow]",
+        border_style="yellow"
+    ))
+    console.print("")
+
     current_primary_balance = find_balance(primary_mint)
     current_secondary_balances = [find_balance(mint) for mint in secondary_mints]
     initial_total_value = (initial_primary_balance * initial_primary_price) + sum(
@@ -147,6 +169,21 @@ def perform_analysis():
         )
     )
     total_profit = current_total_value - initial_total_value
+    
+    profit_color = "green" if total_profit >= 0 else "red"
+    profit_symbol = "📈" if total_profit >= 0 else "📉"
+    
+    wallet_info = Table.grid(padding=(0, 2))
+    wallet_info.add_column(style="bold cyan", justify="right", no_wrap=True)
+    wallet_info.add_column(style="white", no_wrap=True)
+    
+    wallet_info.add_row("💰 Primary Balance:", f"{current_primary_balance:.4f} {primary_mint_symbol}")
+    wallet_info.add_row("📌 Reserved for Fees:", f"0.02 {primary_mint_symbol}")
+    wallet_info.add_row("💵 Portfolio Value:", format_as_money(current_total_value))
+    wallet_info.add_row(f"{profit_symbol} Total Profit:", f"[{profit_color}]{format_as_money(total_profit)}[/{profit_color}]")
+    
+    console.print(Panel(wallet_info, title="💼 Wallet Overview", border_style="cyan", padding=(1, 2), expand=False))
+    console.print("")
 
     last_rows = combined_df.groupby("mint").tail(1)
 
@@ -196,13 +233,41 @@ def perform_analysis():
         format_as_money
     )
 
-    print(tabulate(last_rows_pivoted, headers="keys", tablefmt="rounded_grid"))
-
-    profit_df = pd.DataFrame(
-        {"Total Profit": [format_as_money(total_profit)]},
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    market_table = Table(
+        title=f"📊 [bold cyan]Market Analysis[/bold cyan] [dim]({timestamp})[/dim]", 
+        box=box.ROUNDED, 
+        show_header=True,
+        header_style="bold magenta",
+        border_style="cyan",
+        row_styles=["", "dim"]
     )
-
-    print(tabulate(profit_df, headers="keys", tablefmt="rounded_grid", showindex=False))
+    
+    market_table.add_column("📈 Metric", style="bold yellow", no_wrap=True, width=25)
+    for col in last_rows_pivoted.columns:
+        market_table.add_column(str(col), style="cyan", justify="right", width=15)
+    
+    for idx in last_rows_pivoted.index:
+        row_data = [str(idx)]
+        for col in last_rows_pivoted.columns:
+            value = last_rows_pivoted.loc[idx, col]
+            
+            if idx == "Entry Signal" and value:
+                value_str = f"[bold green]✓ BUY[/bold green]"
+            elif idx == "Exit Signal" and value:
+                value_str = f"[bold red]✗ SELL[/bold red]"
+            elif idx in ["Entry Signal", "Exit Signal"]:
+                value_str = "[dim]-[/dim]"
+            else:
+                value_str = str(value)
+            
+            row_data.append(value_str)
+        market_table.add_row(*row_data)
+    
+    console.print(market_table)
+    console.print("")
 
     for df, secondary_mint, secondary_mint_symbol in zip(
         data_frames, secondary_mints, secondary_mint_symbols
@@ -214,6 +279,16 @@ def perform_analysis():
             handle_sell_signal(
                 df, secondary_mint, data_file_path, secondary_mint_symbol
             )
+
+    for remaining in range(price_update_seconds, 0, -1):
+        print(
+            f"\033[2m⏱️  Next update in {remaining} seconds | Press Ctrl+C to stop\033[0m",
+            end="\r",
+            flush=True
+        )
+        time.sleep(1)
+    
+    print(" " * 80, end="\r", flush=True)
 
 
 def handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol):
@@ -286,11 +361,18 @@ def handle_sell_signal(df, secondary_mint, data_file_path, secondary_mint_symbol
 
 def start_trading():
     log_general.info("Soltrade has now initialized the trading algorithm.")
+    perform_analysis()
     trading_sched = BlockingScheduler()
     trading_sched.add_job(
-        perform_analysis, "interval", seconds=price_update_seconds, max_instances=1
+        perform_analysis, "interval", seconds=price_update_seconds, max_instances=3
     )
-    trading_sched.start()
+    
+    try:
+        trading_sched.start()
+    except (KeyboardInterrupt, SystemExit):
+        console.print("\n[yellow]⏹️  Shutting down SolTrade...[/yellow]")
+        trading_sched.shutdown()
+        log_general.info("SolTrade has been stopped by user.")
 
 
 def save_dataframe_to_csv(df, file_path):
