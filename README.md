@@ -50,11 +50,8 @@ Hard fork of noahtheprogrammer's [soltrade](https://github.com/noahtheprogrammer
 
 - Sign up for a [CryptoCompare API key](https://www.cryptocompare.com/cryptopian/api-keys)
 - Sign up for a free [Jupiter API key](https://portal.jup.ag/) (required for Ultra Swap API only)
-- Create a new wallet on [Phantom](https://phantom.app/) or any other Solana wallet solely for SolTrade
-- Deposit however much of the primary token you want to trade with into your wallet and at least `~0.1 $SOL` to cover transaction fees
-
-> [!IMPORTANT]  
-> **Jupiter API Migration**: This project uses Jupiter Ultra Swap API (`api.jup.ag/ultra/v1`) which requires a free API key. Price data is fetched from the free Price API v3 endpoint (`lite-api.jup.ag/price/v3`) which does not require an API key.
+- Create a new wallet on [Jupiter Wallet](https://jup.ag/) [Phantom](https://phantom.app/) or any other Solana wallet solely for SolTrade
+- Deposit however much of the primary token you want to trade with into your wallet and at least `~0.2 $SOL` to cover transaction fees
 
 ## ⚙️ Configuration 
 
