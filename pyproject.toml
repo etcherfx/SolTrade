@@ -3,18 +3,15 @@ name = "soltrade"
 version = "1.0.0"
 description = "A Solana trading bot with lots of features."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
-    "apscheduler==3.11.0",
     "backtrader==1.9.78.123",
     "base58==2.1.1",
     "httpx==0.28.1",
-    "matplotlib==3.10.3",
     "pandas==2.3.0",
     "prompt-toolkit==3.0.51",
     "requests==2.32.4",
     "rich==13.9.4",
-    "setuptools==80.9.0",
     "solana==0.36.7",
     "solders==0.26.0",
     "ta-lib==0.6.4",

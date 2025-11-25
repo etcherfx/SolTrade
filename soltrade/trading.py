@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Dict, List, Optional
 from rich.console import Console, Group
 from rich.table import Table
 from rich.panel import Panel
@@ -34,44 +34,75 @@ api_key = config_instance.api_key
 trading_interval_minutes = config_instance.trading_interval_minutes
 price_update_seconds = config_instance.price_update_seconds
 
-initial_primary_balance = find_balance(primary_mint)
-initial_secondary_balances = [find_balance(mint) for mint in secondary_mints]
+if not primary_mint or not primary_mint_symbol:
+    raise ValueError("Primary mint configuration is missing.")
+if not secondary_mints or not secondary_mint_symbols:
+    raise ValueError("At least one secondary mint must be configured.")
+
+_http_session = requests.Session()
 
 
-def fetch_price(mint: str) -> float:
-    """Fetch token price from Jupiter Price API v3 with error handling."""
+class BalanceCache:
+    """Lazy balance fetcher that caches until explicitly invalidated."""
+
+    def __init__(self):
+        self._cache: dict[str, float] = {}
+
+    def get(self, mint: str) -> float:
+        if mint not in self._cache:
+            self._cache[mint] = find_balance(mint)
+        return self._cache[mint]
+
+    def invalidate(self, mint: str) -> None:
+        self._cache.pop(mint, None)
+
+
+def fetch_prices(mints: List[str]) -> Dict[str, float]:
+    """Fetch multiple token prices with a single HTTP call."""
+    if not mints:
+        return {}
+
+    unique_mints = list(dict.fromkeys(mints))  # preserve order
+    params = {"ids": ",".join(unique_mints)}
     url = "https://lite-api.jup.ag/price/v3"
-    params = {"ids": mint}
-    
+
     try:
-        response = requests.get(url, params=params, timeout=10)
+        response = _http_session.get(url, params=params, timeout=10)
         response.raise_for_status()
         response_json = response.json()
-        
-        mint_data = response_json.get(mint, {})
-        price = float(mint_data.get("usdPrice", 0))
-        if price == 0:
-            log_general.warning(f"Price for {mint} is 0 or not available")
-        return price
     except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 401:
-            log_general.error("401 Unauthorized: Endpoint requires Pro plan, falling back to lite-api")
+        if e.response is not None and e.response.status_code == 401:
+            log_general.error(
+                "401 Unauthorized: Endpoint requires Pro plan, falling back to lite-api"
+            )
         else:
-            log_general.error(f"HTTP error fetching price for {mint}: {e}")
-        return 0.0
-    except Exception as e:
-        log_general.error(f"Failed to fetch price for {mint}: {e}")
-        return 0.0
+            log_general.error(f"HTTP error fetching prices for {unique_mints}: {e}")
+        return {mint: 0.0 for mint in unique_mints}
+    except Exception as e:  # pragma: no cover - network errors
+        log_general.error(f"Failed to fetch prices for {unique_mints}: {e}")
+        return {mint: 0.0 for mint in unique_mints}
+
+    prices: dict[str, float] = {}
+    for mint in unique_mints:
+        mint_data = response_json.get(mint, {}) or {}
+        price = float(mint_data.get("usdPrice") or 0)
+        if price == 0:
+            log_general.debug(f"Price for {mint} missing from response; defaulting to 0")
+        prices[mint] = price
+    return prices
 
 
-initial_primary_price = fetch_price(primary_mint)
-initial_secondary_prices = [fetch_price(mint) for mint in secondary_mints]
+initial_primary_balance = find_balance(primary_mint)
+initial_secondary_balances = [find_balance(mint) for mint in secondary_mints]
+initial_price_map = fetch_prices([primary_mint, *secondary_mints])
+initial_primary_price = initial_price_map.get(primary_mint, 0.0)
+initial_secondary_prices = [initial_price_map.get(mint, 0.0) for mint in secondary_mints]
 
 console = Console()
 live_display: Optional[Live] = None
 
 
-def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> dict:
+def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> Dict[str, object]:
     """Fetch candlestick data from CryptoCompare API."""
     url = "https://min-api.cryptocompare.com/data/v2/histominute"
     headers = {"authorization": api_key}
@@ -82,7 +113,7 @@ def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> d
         "aggregate": trading_interval_minutes,
     }
     try:
-        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response = _http_session.get(url, headers=headers, params=params, timeout=10)
         response.raise_for_status()
         response_json = response.json()
         if response_json.get("Response") == "Error":
@@ -94,7 +125,7 @@ def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> d
         exit()
 
 
-def format_as_money(value):
+def format_as_money(value: float) -> str:
     return "${:,.2f}".format(value)
 
 
@@ -114,6 +145,8 @@ def _update_live(renderable):
 
 def perform_analysis():
     data_frames = []
+    balance_cache = BalanceCache()
+    price_map = fetch_prices([primary_mint, *secondary_mints])
 
     for secondary_mint, secondary_mint_symbol in zip(
         secondary_mints, secondary_mint_symbols
@@ -153,16 +186,16 @@ def perform_analysis():
     combined_df = pd.concat(data_frames, axis=0)
     combined_df.drop_duplicates(subset=["time", "mint"], keep="last", inplace=True)
 
-    current_primary_balance = find_balance(primary_mint)
-    current_secondary_balances = [find_balance(mint) for mint in secondary_mints]
+    current_primary_balance = balance_cache.get(primary_mint)
+    current_secondary_balances = [balance_cache.get(mint) for mint in secondary_mints]
     initial_total_value = (initial_primary_balance * initial_primary_price) + sum(
         initial_secondary_balance * initial_secondary_price
         for initial_secondary_balance, initial_secondary_price in zip(
             initial_secondary_balances, initial_secondary_prices
         )
     )
-    current_total_value = (current_primary_balance * fetch_price(primary_mint)) + sum(
-        current_secondary_balance * fetch_price(secondary_mint)
+    current_total_value = (current_primary_balance * price_map.get(primary_mint, 0.0)) + sum(
+        current_secondary_balance * price_map.get(secondary_mint, 0.0)
         for current_secondary_balance, secondary_mint in zip(
             current_secondary_balances, secondary_mints
         )
@@ -271,10 +304,20 @@ def perform_analysis():
     ):
         data_file_path = f"data/{secondary_mint_symbol}_data.csv"
         if not df["position"].iat[-1]:
-            handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol)
+            handle_buy_signal(
+                df,
+                secondary_mint,
+                data_file_path,
+                secondary_mint_symbol,
+                balance_cache,
+            )
         else:
             handle_sell_signal(
-                df, secondary_mint, data_file_path, secondary_mint_symbol
+                df,
+                secondary_mint,
+                data_file_path,
+                secondary_mint_symbol,
+                balance_cache,
             )
 
     try:
@@ -287,8 +330,8 @@ def perform_analysis():
         raise
 
 
-def handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol):
-    input_amount = find_balance(primary_mint)
+def handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol, balance_cache: BalanceCache):
+    input_amount = balance_cache.get(primary_mint)
     if df["entry"].iat[-1] == 1:
         mint_symbol = df["mint"].iat[0]
         if input_amount <= 0:
@@ -315,13 +358,15 @@ def handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol)
             df = calc_trailing_stoploss(df)
             df = set_position(df, True)
             save_dataframe_to_csv(df, data_file_path)
+            balance_cache.invalidate(primary_mint)
+            balance_cache.invalidate(secondary_mint)
             return True
         return False
     return False
 
 
-def handle_sell_signal(df, secondary_mint, data_file_path, secondary_mint_symbol):
-    input_amount = find_balance(secondary_mint)
+def handle_sell_signal(df, secondary_mint, data_file_path, secondary_mint_symbol, balance_cache: BalanceCache):
+    input_amount = balance_cache.get(secondary_mint)
     df = calc_trailing_stoploss(df)
 
     if df["exit"].iat[-1] == 1:
@@ -350,6 +395,8 @@ def handle_sell_signal(df, secondary_mint, data_file_path, secondary_mint_symbol
                 ]
             )
             save_dataframe_to_csv(df, data_file_path)
+            balance_cache.invalidate(secondary_mint)
+            balance_cache.invalidate(primary_mint)
             return True
         return False
     return False
