@@ -4,8 +4,8 @@ import pandas as pd
 import requests
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
-from rich.console import Console, Group
+from typing import Any, Dict, List, Optional, cast
+from rich.console import Console, Group, RenderableType
 from rich.table import Table
 from rich.panel import Panel
 from rich.live import Live
@@ -26,13 +26,13 @@ from soltrade.transactions import perform_swap
 from soltrade.wallet import find_balance
 
 config_instance = config()
-primary_mint = config_instance.primary_mint
-primary_mint_symbol = config_instance.primary_mint_symbol
-secondary_mints = config_instance.secondary_mints
-secondary_mint_symbols = config_instance.secondary_mint_symbols
-api_key = config_instance.api_key
-trading_interval_minutes = config_instance.trading_interval_minutes
-price_update_seconds = config_instance.price_update_seconds
+primary_mint: str = config_instance.primary_mint
+primary_mint_symbol: str = config_instance.primary_mint_symbol
+secondary_mints: List[str] = config_instance.secondary_mints
+secondary_mint_symbols: List[str] = config_instance.secondary_mint_symbols
+api_key: str = config_instance.api_key
+trading_interval_minutes: int = config_instance.trading_interval_minutes
+price_update_seconds: int = config_instance.price_update_seconds
 
 if not primary_mint or not primary_mint_symbol:
     raise ValueError("Primary mint configuration is missing.")
@@ -45,8 +45,8 @@ _http_session = requests.Session()
 class BalanceCache:
     """Lazy balance fetcher that caches until explicitly invalidated."""
 
-    def __init__(self):
-        self._cache: dict[str, float] = {}
+    def __init__(self) -> None:
+        self._cache: Dict[str, float] = {}
 
     def get(self, mint: str) -> float:
         if mint not in self._cache:
@@ -55,6 +55,9 @@ class BalanceCache:
 
     def invalidate(self, mint: str) -> None:
         self._cache.pop(mint, None)
+
+
+_balance_cache = BalanceCache()
 
 
 def fetch_prices(mints: List[str]) -> Dict[str, float]:
@@ -69,7 +72,7 @@ def fetch_prices(mints: List[str]) -> Dict[str, float]:
     try:
         response = _http_session.get(url, params=params, timeout=10)
         response.raise_for_status()
-        response_json = response.json()
+        response_json = cast(Dict[str, Any], response.json())
     except requests.exceptions.HTTPError as e:
         if e.response is not None and e.response.status_code == 401:
             log_general.error(
@@ -84,7 +87,7 @@ def fetch_prices(mints: List[str]) -> Dict[str, float]:
 
     prices: dict[str, float] = {}
     for mint in unique_mints:
-        mint_data = response_json.get(mint, {}) or {}
+        mint_data = cast(Dict[str, Any], response_json.get(mint, {}) or {})
         price = float(mint_data.get("usdPrice") or 0)
         if price == 0:
             log_general.debug(f"Price for {mint} missing from response; defaulting to 0")
@@ -102,11 +105,11 @@ console = Console()
 live_display: Optional[Live] = None
 
 
-def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> Dict[str, object]:
+def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> Dict[str, Any]:
     """Fetch candlestick data from CryptoCompare API."""
     url = "https://min-api.cryptocompare.com/data/v2/histominute"
     headers = {"authorization": api_key}
-    params = {
+    params: Dict[str, str | int] = {
         "tsym": primary_mint_symbol,
         "fsym": secondary_mint_symbol,
         "limit": 50,
@@ -115,7 +118,7 @@ def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> D
     try:
         response = _http_session.get(url, headers=headers, params=params, timeout=10)
         response.raise_for_status()
-        response_json = response.json()
+        response_json = cast(Dict[str, Any], response.json())
         if response_json.get("Response") == "Error":
             log_general.error(response_json.get("Message"))
             exit()
@@ -129,13 +132,13 @@ def format_as_money(value: float) -> str:
     return "${:,.2f}".format(value)
 
 
-def _render_dashboard(wallet_panel: Panel, market_table: Table, countdown_text: str):
+def _render_dashboard(wallet_panel: Panel, market_table: Table, countdown_text: str) -> Group:
     """Combine dashboard sections into a single Live-friendly renderable."""
     countdown = Text(countdown_text, style="dim")
     return Group(wallet_panel, Text(""), market_table, Text(""), countdown)
 
 
-def _update_live(renderable):
+def _update_live(renderable: RenderableType) -> None:
     """Safely update the Live display or fall back to standard printing."""
     if live_display and live_display.is_started:
         live_display.update(renderable)
@@ -143,9 +146,8 @@ def _update_live(renderable):
         console.print(renderable)
 
 
-def perform_analysis():
-    data_frames = []
-    balance_cache = BalanceCache()
+def perform_analysis() -> None:
+    data_frames: List[pd.DataFrame] = []
     price_map = fetch_prices([primary_mint, *secondary_mints])
 
     for secondary_mint, secondary_mint_symbol in zip(
@@ -183,11 +185,11 @@ def perform_analysis():
 
         data_frames.append(df)
 
-    combined_df = pd.concat(data_frames, axis=0)
+    combined_df: pd.DataFrame = pd.concat(data_frames, axis=0)
     combined_df.drop_duplicates(subset=["time", "mint"], keep="last", inplace=True)
 
-    current_primary_balance = balance_cache.get(primary_mint)
-    current_secondary_balances = [balance_cache.get(mint) for mint in secondary_mints]
+    current_primary_balance = _balance_cache.get(primary_mint)
+    current_secondary_balances = [_balance_cache.get(mint) for mint in secondary_mints]
     initial_total_value = (initial_primary_balance * initial_primary_price) + sum(
         initial_secondary_balance * initial_secondary_price
         for initial_secondary_balance, initial_secondary_price in zip(
@@ -258,9 +260,8 @@ def perform_analysis():
     }
     last_rows_pivoted.rename(index=custom_headers, inplace=True)
 
-    last_rows_pivoted.loc["Price"] = last_rows_pivoted.loc["Price"].apply(
-        format_as_money
-    )
+    price_row = cast(pd.Series, last_rows_pivoted.loc["Price"])
+    last_rows_pivoted.loc["Price"] = price_row.apply(format_as_money)  # pyright: ignore[reportGeneralTypeIssues]
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
@@ -304,21 +305,9 @@ def perform_analysis():
     ):
         data_file_path = f"data/{secondary_mint_symbol}_data.csv"
         if not df["position"].iat[-1]:
-            handle_buy_signal(
-                df,
-                secondary_mint,
-                data_file_path,
-                secondary_mint_symbol,
-                balance_cache,
-            )
+            handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol)
         else:
-            handle_sell_signal(
-                df,
-                secondary_mint,
-                data_file_path,
-                secondary_mint_symbol,
-                balance_cache,
-            )
+            handle_sell_signal(df, secondary_mint, data_file_path, secondary_mint_symbol)
 
     try:
         for remaining in range(price_update_seconds, 0, -1):
@@ -330,10 +319,10 @@ def perform_analysis():
         raise
 
 
-def handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol, balance_cache: BalanceCache):
-    input_amount = balance_cache.get(primary_mint)
+def handle_buy_signal(df: pd.DataFrame, secondary_mint: str, data_file_path: str, secondary_mint_symbol: str) -> bool:
+    input_amount = _balance_cache.get(primary_mint)
     if df["entry"].iat[-1] == 1:
-        mint_symbol = df["mint"].iat[0]
+        mint_symbol = cast(str, df["mint"].iat[0])
         if input_amount <= 0:
             log_transaction.info(
                 f"SolTrade has detected a buy signal, but does not have enough {primary_mint_symbol} to trade."
@@ -358,19 +347,19 @@ def handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol,
             df = calc_trailing_stoploss(df)
             df = set_position(df, True)
             save_dataframe_to_csv(df, data_file_path)
-            balance_cache.invalidate(primary_mint)
-            balance_cache.invalidate(secondary_mint)
+            _balance_cache.invalidate(primary_mint)
+            _balance_cache.invalidate(secondary_mint)
             return True
         return False
     return False
 
 
-def handle_sell_signal(df, secondary_mint, data_file_path, secondary_mint_symbol, balance_cache: BalanceCache):
-    input_amount = balance_cache.get(secondary_mint)
+def handle_sell_signal(df: pd.DataFrame, secondary_mint: str, data_file_path: str, secondary_mint_symbol: str) -> bool:
+    input_amount = _balance_cache.get(secondary_mint)
     df = calc_trailing_stoploss(df)
 
     if df["exit"].iat[-1] == 1:
-        mint_symbol = df["mint"].iat[0]
+        mint_symbol = cast(str, df["mint"].iat[0])
         log_transaction.info(
             f"SolTrade has detected a sell signal for {input_amount} {mint_symbol}."
         )
@@ -395,8 +384,8 @@ def handle_sell_signal(df, secondary_mint, data_file_path, secondary_mint_symbol
                 ]
             )
             save_dataframe_to_csv(df, data_file_path)
-            balance_cache.invalidate(secondary_mint)
-            balance_cache.invalidate(primary_mint)
+            _balance_cache.invalidate(secondary_mint)
+            _balance_cache.invalidate(primary_mint)
             return True
         return False
     return False
@@ -423,7 +412,7 @@ def start_trading():
     console.print("\n[yellow]⏹️  Shutting down SolTrade...[/yellow]")
 
 
-def save_dataframe_to_csv(df, file_path):
+def save_dataframe_to_csv(df: pd.DataFrame, file_path: str) -> None:
     try:
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         df.to_csv(file_path, index=False)
@@ -432,5 +421,5 @@ def save_dataframe_to_csv(df, file_path):
         log_general.error(f"Failed to save data to {file_path}: {e}")
 
 
-def read_dataframe_from_csv(file_path):
-    return pd.read_csv(file_path)
+def read_dataframe_from_csv(file_path: str) -> pd.DataFrame:
+    return pd.read_csv(file_path)  # type: ignore[reportGeneralTypeIssues]

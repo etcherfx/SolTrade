@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any, Dict, List
 
 from solana.rpc.api import Client
 from solders.keypair import Keypair
@@ -10,27 +11,27 @@ from soltrade.log import log_general
 
 class Config:
     def __init__(self):
-        self.api_key = None
-        self.jupiter_api_key = None
-        self.private_key = None
-        self.rpc_https = None
-        self.jup_api = None
-        self.primary_mint = None
-        self.primary_mint_symbol = None
-        self.sol_mint = "So11111111111111111111111111111111111111112"
-        self.secondary_mints = []
-        self.secondary_mint_symbols = []
-        self.price_update_seconds = None
-        self.trading_interval_minutes = None
-        self.max_slippage = None
-        self.strategy = None
+        self.api_key: str = ""
+        self.jupiter_api_key: str = ""
+        self.private_key: str = ""
+        self.rpc_https: str = "https://api.mainnet-beta.solana.com"
+        self.jup_api: str = "https://api.jup.ag/ultra/v1"
+        self.primary_mint: str = ""
+        self.primary_mint_symbol: str = ""
+        self.sol_mint: str = "So11111111111111111111111111111111111111112"
+        self.secondary_mints: List[str] = []
+        self.secondary_mint_symbols: List[str] = []
+        self.price_update_seconds: int = 60
+        self.trading_interval_minutes: int = 1
+        self.max_slippage: int = 50
+        self.strategy: str = "default"
         self.path = os.path.join(os.path.dirname(__file__), "..", "config.json")
-        self._client = None
-        self._decimals_cache = {}
+        self._client: Client | None = None
+        self._decimals_cache: Dict[str, int] = {}
         self.load_config()
 
     def load_config(self):
-        default_config = {
+        default_config: Dict[str, Any] = {
             "api_key": "",
             "jupiter_api_key": "",
             "private_key": "",
@@ -48,13 +49,15 @@ class Config:
 
         with open(self.path, "r") as file:
             try:
-                config_data = json.load(file)
-                for key, default_value in default_config.items():
-                    setattr(self, key, config_data.get(key, default_value))
-                    if not getattr(self, key):
-                        setattr(self, key, default_value)
+                config_data: Dict[str, Any] = json.load(file)
             except json.JSONDecodeError as e:
-                print(f"Error loading config: {e}")
+                raise ValueError(f"Error loading config: {e}") from e
+
+        for key, fallback in default_config.items():
+            value = config_data.get(key, fallback)
+            if value in ("", None):
+                value = fallback
+            setattr(self, key, value)
         
         self._validate_config()
     
