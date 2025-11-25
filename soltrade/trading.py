@@ -3,15 +3,17 @@ import os
 import pandas as pd
 import requests
 import time
-from rich.console import Console
+from datetime import datetime
+from typing import Optional
+from rich.console import Console, Group
 from rich.table import Table
 from rich.panel import Panel
 from rich.live import Live
+from rich.text import Text
 from rich import box
-from apscheduler.schedulers.background import BlockingScheduler
 
 from soltrade.config import config
-from soltrade.log import log_general, log_transaction
+from soltrade.log import log_general, log_transaction, silence_console_logging
 from soltrade.strategy import (
     strategy,
     calc_stoploss,
@@ -65,10 +67,8 @@ def fetch_price(mint: str) -> float:
 initial_primary_price = fetch_price(primary_mint)
 initial_secondary_prices = [fetch_price(mint) for mint in secondary_mints]
 
-# Track first run to avoid clearing initial startup messages
-_first_run = True
-
 console = Console()
+live_display: Optional[Live] = None
 
 
 def fetch_candlestick(primary_mint_symbol: str, secondary_mint_symbol: str) -> dict:
@@ -98,16 +98,21 @@ def format_as_money(value):
     return "${:,.2f}".format(value)
 
 
-def perform_analysis():
-    global _first_run
-    
-    # Clear screen on subsequent runs, skip on first to preserve startup messages
-    if not _first_run:
-        os.system('cls' if os.name == 'nt' else 'clear')
+def _render_dashboard(wallet_panel: Panel, market_table: Table, countdown_text: str):
+    """Combine dashboard sections into a single Live-friendly renderable."""
+    countdown = Text(countdown_text, style="dim")
+    return Group(wallet_panel, Text(""), market_table, Text(""), countdown)
+
+
+def _update_live(renderable):
+    """Safely update the Live display or fall back to standard printing."""
+    if live_display and live_display.is_started:
+        live_display.update(renderable)
     else:
-        _first_run = False
-        
-    log_general.debug("Soltrade is analyzing the market; no trade has been executed.")
+        console.print(renderable)
+
+
+def perform_analysis():
     data_frames = []
 
     for secondary_mint, secondary_mint_symbol in zip(
@@ -148,12 +153,6 @@ def perform_analysis():
     combined_df = pd.concat(data_frames, axis=0)
     combined_df.drop_duplicates(subset=["time", "mint"], keep="last", inplace=True)
 
-    console.print(Panel.fit(
-        "🔍 [bold yellow]Analyzing Market Data...[/bold yellow]",
-        border_style="yellow"
-    ))
-    console.print("")
-
     current_primary_balance = find_balance(primary_mint)
     current_secondary_balances = [find_balance(mint) for mint in secondary_mints]
     initial_total_value = (initial_primary_balance * initial_primary_price) + sum(
@@ -182,9 +181,6 @@ def perform_analysis():
     wallet_info.add_row("💵 Portfolio Value:", format_as_money(current_total_value))
     wallet_info.add_row(f"{profit_symbol} Total Profit:", f"[{profit_color}]{format_as_money(total_profit)}[/{profit_color}]")
     
-    console.print(Panel(wallet_info, title="💼 Wallet Overview", border_style="cyan", padding=(1, 2), expand=False))
-    console.print("")
-
     last_rows = combined_df.groupby("mint").tail(1)
 
     pivot_columns = [
@@ -233,7 +229,6 @@ def perform_analysis():
         format_as_money
     )
 
-    from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     market_table = Table(
@@ -255,9 +250,9 @@ def perform_analysis():
             value = last_rows_pivoted.loc[idx, col]
             
             if idx == "Entry Signal" and value:
-                value_str = f"[bold green]✓ BUY[/bold green]"
+                value_str = "[bold green]✓ BUY[/bold green]"
             elif idx == "Exit Signal" and value:
-                value_str = f"[bold red]✗ SELL[/bold red]"
+                value_str = "[bold red]✗ SELL[/bold red]"
             elif idx in ["Entry Signal", "Exit Signal"]:
                 value_str = "[dim]-[/dim]"
             else:
@@ -266,8 +261,10 @@ def perform_analysis():
             row_data.append(value_str)
         market_table.add_row(*row_data)
     
-    console.print(market_table)
-    console.print("")
+    wallet_panel = Panel(wallet_info, title="💼 Wallet Overview", border_style="cyan", padding=(1, 2), expand=False)
+
+    dashboard = _render_dashboard(wallet_panel, market_table, "⏳ Refreshing data...")
+    _update_live(dashboard)
 
     for df, secondary_mint, secondary_mint_symbol in zip(
         data_frames, secondary_mints, secondary_mint_symbols
@@ -280,15 +277,14 @@ def perform_analysis():
                 df, secondary_mint, data_file_path, secondary_mint_symbol
             )
 
-    for remaining in range(price_update_seconds, 0, -1):
-        print(
-            f"\033[2m⏱️  Next update in {remaining} seconds | Press Ctrl+C to stop\033[0m",
-            end="\r",
-            flush=True
-        )
-        time.sleep(1)
-    
-    print(" " * 80, end="\r", flush=True)
+    try:
+        for remaining in range(price_update_seconds, 0, -1):
+            countdown_text = f"⏱️  Next update in {remaining} seconds | Press Ctrl+C to stop"
+            _update_live(_render_dashboard(wallet_panel, market_table, countdown_text))
+            time.sleep(1)
+    except KeyboardInterrupt:
+        _update_live(_render_dashboard(wallet_panel, market_table, "⏹️  Stopping..."))
+        raise
 
 
 def handle_buy_signal(df, secondary_mint, data_file_path, secondary_mint_symbol):
@@ -360,19 +356,24 @@ def handle_sell_signal(df, secondary_mint, data_file_path, secondary_mint_symbol
 
 
 def start_trading():
+    global live_display
+
+    silence_console_logging()
     log_general.info("Soltrade has now initialized the trading algorithm.")
-    perform_analysis()
-    trading_sched = BlockingScheduler()
-    trading_sched.add_job(
-        perform_analysis, "interval", seconds=price_update_seconds, max_instances=3
-    )
-    
-    try:
-        trading_sched.start()
-    except (KeyboardInterrupt, SystemExit):
-        console.print("\n[yellow]⏹️  Shutting down SolTrade...[/yellow]")
-        trading_sched.shutdown()
-        log_general.info("SolTrade has been stopped by user.")
+
+    with Live(console=console, refresh_per_second=4, transient=False) as live:
+        live_display = live
+        _update_live(Panel.fit("🔍 Loading market data...", border_style="yellow"))
+
+        try:
+            while True:
+                perform_analysis()
+        except KeyboardInterrupt:
+            log_general.info("SolTrade has been stopped by user.")
+        finally:
+            live_display = None
+
+    console.print("\n[yellow]⏹️  Shutting down SolTrade...[/yellow]")
 
 
 def save_dataframe_to_csv(df, file_path):

@@ -71,3 +71,11 @@ log_general = setup_logger("general_logger", "general.log", level=logging.DEBUG)
 log_transaction = setup_logger(
     "transaction_logger", "transaction.log", add_to_general=True, level=logging.DEBUG
 )
+
+
+def silence_console_logging():
+    """Raise console handler levels so legacy log lines stay out of the UI."""
+    for logger in (log_general, log_transaction):
+        for handler in logger.handlers:
+            if isinstance(handler, AutoFlushStreamHandler):
+                handler.setLevel(logging.CRITICAL + 1)

@@ -1,7 +1,7 @@
 from soltrade.wallet import find_balance
 from soltrade.config import config
 from soltrade.trading import start_trading
-from soltrade.log import log_general
+from soltrade.log import log_general, silence_console_logging
 from prompt_toolkit import Application
 from prompt_toolkit.layout import Layout
 from prompt_toolkit.widgets import Dialog, Button
@@ -94,22 +94,8 @@ def get_layout():
 
 
 def start_trading_handler():
-    subprocess.run("cls" if os.name == "nt" else "clear", shell=True)
-    can_run = check_json_state()
-
-    try:
-        log_general.info(
-            f"SolTrade has detected {find_balance(config().primary_mint)} {config().primary_mint_symbol} tokens available for trading."
-        )
-    except Exception as e:
-        log_general.error(f"Error finding {config().primary_mint_symbol} balance: {e}")
-        app.exit(result=False)
-
-    if can_run:
-        log_general.debug("SolTrade has successfully imported the API requirements.")
-        start_trading()
-    else:
-        app.exit(result=False)
+    # Exit the fullscreen UI so the terminal returns to the normal buffer
+    app.exit(result="start_trading")
 
 
 style = Style.from_dict(
@@ -141,5 +127,23 @@ app.output.show_cursor = lambda: None
 app.output.hide_cursor()
 result = app.run()
 
-if not result:
+if result == "start_trading":
+    subprocess.run("cls" if os.name == "nt" else "clear", shell=True)
+    silence_console_logging()
+    can_run = check_json_state()
+
+    try:
+        log_general.info(
+            f"SolTrade has detected {find_balance(config().primary_mint)} {config().primary_mint_symbol} tokens available for trading."
+        )
+    except Exception as e:
+        log_general.error(f"Error finding {config().primary_mint_symbol} balance: {e}")
+        exit()
+
+    if can_run:
+        log_general.debug("SolTrade has successfully imported the API requirements.")
+        start_trading()
+    else:
+        exit()
+elif not result:
     exit()
