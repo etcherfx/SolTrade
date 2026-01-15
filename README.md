@@ -57,21 +57,21 @@ Hard fork of noahtheprogrammer's [soltrade](https://github.com/noahtheprogrammer
 
 - Make a copy of the `config.json.sample` file and rename it to `config.json`
 - Fill in / edit the following parameters in the `config.json` file or leave them default:
-  | Parameter                  | Description                                                          |                Default                |
-  | -------------------------- | -------------------------------------------------------------------- | :-----------------------------------: |
-  | `api_key`                  | Your CryptoCompare API key                                           |                `Null`                 |
-  | `jupiter_api_key`          | Your Jupiter API key from portal.jup.ag                              |                `Null`                 |
-  | `private_key`              | Your Solana wallet private key                                       |                `Null`                 |
-  | `rpc_https`                | HTTPS endpoint of your RPC (for balance checks & token info)         | `https://api.mainnet-beta.solana.com` |
-  | `jup_api`                  | Jupiter Ultra API endpoint                                           |     `https://api.jup.ag/ultra/v1`     |
-  | `primary_mint`             | Token address of main currency                                       |               `EPjF..v`               |
-  | `primary_mint_symbol`      | Token symbol of main token                                           |                `USDC`                 |
-  | `secondary_mints`          | Token adress of each custom token(s) seperated by `,` in a list `[]` |              `[So11..2]`              |
-  | `secondary_mint_symbols`   | Token symbol of custom token(s) seperated by `,` in a list `[]`      |                `[SOL]`                |
-  | `price_update_seconds`     | Second-based time interval between token price updates               |                 `60`                  |
-  | `trading_interval_minutes` | Minute-based time interval for technical analysis                    |                  `1`                  |
-  | `max_slippage`             | Maximum slippage % in BPS                                            |                 `50`                  |
-  | `strategy`                 | The strategy you want to trade with                                  |               `default`               |
+  | Parameter                  | Description                                                           |                Default                |
+  | -------------------------- | --------------------------------------------------------------------- | :-----------------------------------: |
+  | `api_key`                  | Your CryptoCompare API key                                            |                `Null`                 |
+  | `jupiter_api_key`          | Your Jupiter API key from portal.jup.ag                               |                `Null`                 |
+  | `private_key`              | Your Solana wallet private key                                        |                `Null`                 |
+  | `rpc_https`                | HTTPS endpoint of your RPC (for balance checks & token info)          | `https://api.mainnet-beta.solana.com` |
+  | `jup_api`                  | Jupiter Ultra API endpoint                                            |     `https://api.jup.ag/ultra/v1`     |
+  | `primary_mint`             | Token address of main currency                                        |               `EPjF..v`               |
+  | `primary_mint_symbol`      | Token symbol of main token                                            |                `USDC`                 |
+  | `secondary_mints`          | Token address of each custom token(s) separated by `,` in a list `[]` |              `[So11..2]`              |
+  | `secondary_mint_symbols`   | Token symbol of custom token(s) separated by `,` in a list `[]`       |                `[SOL]`                |
+  | `price_update_seconds`     | Second-based time interval between token price updates                |                 `60`                  |
+  | `trading_interval_minutes` | Minute-based time interval for technical analysis                     |                  `1`                  |
+  | `max_slippage`             | Maximum slippage % in BPS (e.g. `50` = `0.50%`)                       |                 `50`                  |
+  | `strategy`                 | The strategy you want to trade with                                   |               `default`               |
 
 ## 🛠️ Installation
 
